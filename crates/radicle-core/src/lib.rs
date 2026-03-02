@@ -76,3 +76,5 @@ pub use node::NodeId;
 
 pub mod repo;
 pub use repo::RepoId;
+pub mod identity;
+pub use identity::Did;

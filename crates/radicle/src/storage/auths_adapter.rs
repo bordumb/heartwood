@@ -3,6 +3,7 @@ use std::str::FromStr;
 
 use auths_id::keri::KeyState;
 use auths_radicle::storage::GitRadicleStorage;
+use auths_radicle::refs::Layout;
 use auths_radicle::{AuthsStorage, BridgeError};
 use auths_verifier::core::Attestation;
 
@@ -19,19 +20,21 @@ use crate::identity::namespace::IdentityNamespace;
 /// identity and attestation operations.
 pub struct HeartwooodAuthsStorage {
     storage_path: PathBuf,
+    layout: Layout,
 }
 
 impl HeartwooodAuthsStorage {
     pub fn new(storage_path: impl Into<PathBuf>) -> Self {
         Self {
             storage_path: storage_path.into(),
+            layout: Layout::radicle(),
         }
     }
 
     /// Parse a KERI DID prefix from a full DID string like `"did:keri:EXq5..."`.
-    fn parse_keri_prefix(identity_did: &str) -> Result<&str, BridgeError> {
+    fn parse_keri_prefix(identity_did: &Did) -> Result<&str, BridgeError> {
         identity_did
-            .strip_prefix("did:keri:")
+            .as_keri_prefix()
             .ok_or_else(|| BridgeError::IdentityLoad(format!("not a KERI DID: {identity_did}")))
     }
 
@@ -63,11 +66,11 @@ impl HeartwooodAuthsStorage {
     /// Open the identity repo for a KERI DID as a `GitRadicleStorage`.
     fn open_identity_storage(
         &self,
-        identity_did: &str,
+        identity_did: &Did,
     ) -> Result<GitRadicleStorage, BridgeError> {
         let prefix = Self::parse_keri_prefix(identity_did)?;
         let repo_path = self.find_identity_repo_path(prefix)?;
-        GitRadicleStorage::open(&repo_path)
+        GitRadicleStorage::open(&repo_path, self.layout.clone())
     }
 
     /// List all repo directories under the storage path.
@@ -144,7 +147,7 @@ impl HeartwooodAuthsStorage {
     fn enumerate_identity_namespaces(
         &self,
         project_path: &Path,
-    ) -> Result<Vec<(String, PathBuf)>, BridgeError> {
+    ) -> Result<Vec<(Did, PathBuf)>, BridgeError> {
         let repo = raw::Repository::open_bare(project_path).map_err(|e| {
             BridgeError::Repository(format!(
                 "failed to open project repo at {}: {e}",
@@ -177,10 +180,7 @@ impl HeartwooodAuthsStorage {
                 Some(ns) => ns,
                 None => continue,
             };
-            let keri_did = match ns.did() {
-                Did::Keri(prefix) => format!("did:keri:{prefix}"),
-                _ => continue,
-            };
+            let keri_did = ns.did().clone();
 
             // Read the pointer blob
             if let Ok(commit) = reference.peel_to_commit() {
@@ -204,15 +204,19 @@ impl HeartwooodAuthsStorage {
 }
 
 impl AuthsStorage for HeartwooodAuthsStorage {
-    fn load_key_state(&self, identity_did: &str) -> Result<KeyState, BridgeError> {
+    fn layout(&self) -> &Layout {
+        &self.layout
+    }
+
+    fn load_key_state(&self, identity_did: &Did) -> Result<KeyState, BridgeError> {
         self.open_identity_storage(identity_did)?
             .load_key_state(identity_did)
     }
 
     fn load_attestation(
         &self,
-        device_did: &str,
-        identity_did: &str,
+        device_did: &Did,
+        identity_did: &Did,
     ) -> Result<Attestation, BridgeError> {
         self.open_identity_storage(identity_did)?
             .load_attestation(device_did, identity_did)
@@ -220,15 +224,13 @@ impl AuthsStorage for HeartwooodAuthsStorage {
 
     fn find_identity_for_device(
         &self,
-        device_did: &str,
-        repo_id: &str,
-    ) -> Result<Option<String>, BridgeError> {
-        let rid = RepoId::from_str(repo_id)
-            .map_err(|_| BridgeError::Repository(format!("invalid RepoId: {repo_id}")))?;
-        let project_path = self.storage_path.join(rid.canonical());
+        device_did: &Did,
+        repo_id: &RepoId,
+    ) -> Result<Option<Did>, BridgeError> {
+        let project_path = self.storage_path.join(repo_id.canonical());
 
         for (keri_did, identity_path) in self.enumerate_identity_namespaces(&project_path)? {
-            let identity_storage = match GitRadicleStorage::open(&identity_path) {
+            let identity_storage = match GitRadicleStorage::open(&identity_path, self.layout.clone()) {
                 Ok(s) => s,
                 Err(_) => continue,
             };
@@ -242,7 +244,7 @@ impl AuthsStorage for HeartwooodAuthsStorage {
         Ok(None)
     }
 
-    fn local_identity_tip(&self, identity_did: &str) -> Result<Option<[u8; 20]>, BridgeError> {
+    fn local_identity_tip(&self, identity_did: &Did) -> Result<Option<[u8; 20]>, BridgeError> {
         self.open_identity_storage(identity_did)?
             .local_identity_tip(identity_did)
     }
