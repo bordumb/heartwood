@@ -120,3 +120,16 @@ done by `SignedRefs::verify()` before this is called. The bridge only checks:
 - [ ] `Rejected` attestation returns `AuthorityError::Rejected`
 - [ ] KERI identity that is NOT a project delegate returns `AuthorityError::NotAuthorized`
 - [ ] Unit tests with mock bridge (test both paths)
+
+## Done summary
+- Implemented `CompositeAuthorityChecker` in `device_authority.rs`
+- Fast path: direct delegate check via `doc.is_delegate()` (no bridge call)
+- Slow path: builds `VerifyRequest`, calls `bridge.verify_signer()`, then `find_identity_for_device()` and verifies KERI identity is a delegate
+- Handles all `VerifyResult` variants: Verified, Rejected, Warn, Quarantine
+- Made `chrono` a required dependency (needed for auths-radicle `Timestamp`)
+- Why: Production authorization check bridging Heartwood delegates to auths policy engine
+- Verification: `cargo check -p radicle` and `cargo test -p radicle` pass (244 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:
