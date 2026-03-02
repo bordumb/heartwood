@@ -73,3 +73,16 @@ about peer namespaces.
 - [ ] `NamespaceKind::from_component("unknown-garbage")` returns `None`
 - [ ] Existing namespace iteration code still works (no regressions)
 - [ ] Unit tests for all three cases
+
+## Done summary
+- Added `NamespaceKind` enum with `Peer(PublicKey)` and `Identity(IdentityNamespace)` variants
+- `from_component()` classifies namespace components, `as_peer()` / `as_identity()` accessors
+- Added `Debug` derive to `IdentityNamespace`
+- Re-exported from `radicle::identity`
+- Unit tests for all three cases (peer, identity, garbage)
+- Why: Centralizes namespace classification for DRY filtering in fetch/sync code
+- Verification: `cargo test -p radicle -- identity::namespace` (10 tests pass)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle -- identity::namespace
+- PRs:

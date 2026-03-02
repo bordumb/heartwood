@@ -15,7 +15,7 @@ pub use doc::{Doc, DocAt, DocError, IdError, PayloadError, RawDoc, RepoId, Visib
 pub use keri::{KeriIdentityStore, KeriStoreError};
 pub use namespace::{
     read_identity_pointer, write_identity_namespace, IdentityNamespace, IdentityPointer,
-    IdentityPointerError,
+    IdentityPointerError, NamespaceKind,
 };
 pub use project::Project;
 
