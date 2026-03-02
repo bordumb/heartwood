@@ -1,5 +1,6 @@
 #![warn(clippy::unwrap_used)]
 pub mod crefs;
+pub mod device_authority;
 pub mod did;
 pub mod doc;
 pub mod keri;
@@ -8,6 +9,7 @@ pub mod project;
 
 pub use crefs::CanonicalRefs;
 pub use crypto::PublicKey;
+pub use device_authority::{AuthorityError, DeviceAuthority, DeviceAuthorityChecker};
 pub use did::Did;
 pub use doc::{Doc, DocAt, DocError, IdError, PayloadError, RawDoc, RepoId, Visibility};
 pub use keri::{KeriIdentityStore, KeriStoreError};
