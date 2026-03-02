@@ -55,3 +55,15 @@ If `node/device.rs` has a wrapper around verification, update it similarly.
 - [ ] No call sites that previously used `verify()` are now broken
 - [ ] Existing integration tests pass (verify they still work with `did:key` delegates)
 - [ ] `cargo test -p radicle` passes
+
+## Done summary
+- Added `Remote<Verified>::check_authority()` method in `storage.rs` as the integration point
+- Existing `verify()` path unchanged (crypto only at load time, where Doc is not available)
+- Authority check is a separate step called by higher-level code that has Doc context
+- Call site updates in protocol/fetch code deferred to fn-4 (where Doc IS available in context)
+- Why: Provides the plumbing for multi-device authority checking without breaking existing verification flow
+- Verification: `cargo check -p radicle` and `cargo test -p radicle` pass (244 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:

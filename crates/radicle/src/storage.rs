@@ -408,6 +408,19 @@ impl Remote<Verified> {
         }
     }
 
+    /// Check the device's authority to sign for this project.
+    ///
+    /// Called after crypto verification to check whether the signing device
+    /// is either a direct delegate or attested under a KERI identity delegate.
+    pub fn check_authority(
+        &self,
+        checker: &dyn crate::identity::DeviceAuthorityChecker,
+        doc: &crate::identity::Doc,
+        repo_id: &crate::identity::RepoId,
+    ) -> Result<crate::identity::DeviceAuthority, crate::identity::AuthorityError> {
+        checker.check(&self.refs.id, doc, repo_id)
+    }
+
     pub fn to_refspecs(&self) -> Vec<Refspec<PatternString, PatternString>> {
         let ns = self.id.to_namespace();
         // Nb. the references in Refs are expected to be Qualified
