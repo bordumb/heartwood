@@ -542,7 +542,11 @@ impl Patch {
     /// List of patch revisions by the patch author. The initial changeset is part of the
     /// first revision.
     pub fn updates(&self) -> impl DoubleEndedIterator<Item = (RevisionId, &Revision)> {
-        self.revisions_by(self.author().public_key())
+        let pk = self
+            .author()
+            .public_key()
+            .expect("patch author must have a public key");
+        self.revisions_by(pk)
     }
 
     /// List of all patch revisions by all authors.
@@ -561,7 +565,7 @@ impl Patch {
         author: &'a PublicKey,
     ) -> impl DoubleEndedIterator<Item = (RevisionId, &'a Revision)> {
         self.revisions()
-            .filter(move |(_, r)| r.author.public_key() == author)
+            .filter(move |(_, r)| r.author.public_key() == Some(author))
     }
 
     /// List of patch reviews of the given revision.
@@ -581,7 +585,7 @@ impl Patch {
 
     /// List of patch assignees.
     pub fn assignees(&self) -> impl Iterator<Item = Did> + '_ {
-        self.assignees.iter().map(Did::from)
+        self.assignees.iter().map(|pk| Did::from(pk))
     }
 
     /// Get the merges.
@@ -632,7 +636,11 @@ impl Patch {
 
     /// Latest revision by the patch author.
     pub fn latest(&self) -> (RevisionId, &Revision) {
-        self.latest_by(self.author().public_key())
+        let pk = self
+            .author()
+            .public_key()
+            .expect("patch author must have a public key");
+        self.latest_by(pk)
             .expect("Patch::latest: there is always at least one revision")
     }
 
@@ -673,18 +681,19 @@ impl Patch {
         actor: &ActorId,
         doc: &Doc,
     ) -> Result<Authorization, Error> {
-        if doc.is_delegate(&actor.into()) {
+        if doc.is_delegate(&Did::from(actor)) {
             // A delegate is authorized to do all actions.
             return Ok(Authorization::Allow);
         }
-        let author = self.author().id().as_key();
+
+        let is_author = self.author().id().as_key().map_or(false, |a| a == actor);
         let outcome = match action {
             // The patch author can edit the patch and change its state.
-            Action::Edit { .. } => Authorization::from(actor == author),
+            Action::Edit { .. } => Authorization::from(is_author),
             Action::Lifecycle { state } => Authorization::from(match state {
-                Lifecycle::Open => actor == author,
-                Lifecycle::Draft => actor == author,
-                Lifecycle::Archived => actor == author,
+                Lifecycle::Open => is_author,
+                Lifecycle::Draft => is_author,
+                Lifecycle::Archived => is_author,
             }),
             // Only delegates can carry out these actions.
             Action::Label { labels } => {
@@ -703,7 +712,7 @@ impl Patch {
             Action::Review { .. } => Authorization::Allow,
             Action::ReviewRedact { review, .. } => {
                 if let Some((_, review)) = lookup::review(self, review)? {
-                    Authorization::from(actor == review.author.public_key())
+                    Authorization::from(review.author.public_key() == Some(actor))
                 } else {
                     // Redacted.
                     Authorization::Unknown
@@ -711,7 +720,7 @@ impl Patch {
             }
             Action::ReviewEdit(edit) => {
                 if let Some((_, review)) = lookup::review(self, edit.review_id())? {
-                    Authorization::from(actor == review.author.public_key())
+                    Authorization::from(review.author.public_key() == Some(actor))
                 } else {
                     // Redacted.
                     Authorization::Unknown
@@ -741,8 +750,8 @@ impl Patch {
                     if let Some(comment) = review.comments.comment(comment) {
                         return Ok(Authorization::from(
                             actor == &comment.author()
-                                || actor == review.author.public_key()
-                                || actor == revision.author.public_key(),
+                                || review.author.public_key() == Some(actor)
+                                || revision.author.public_key() == Some(actor),
                         ));
                     }
                 }
@@ -755,7 +764,7 @@ impl Patch {
             // Only the revision author can edit or redact their revision.
             Action::RevisionEdit { revision, .. } | Action::RevisionRedact { revision, .. } => {
                 if let Some(revision) = lookup::revision(self, revision)? {
-                    Authorization::from(actor == revision.author.public_key())
+                    Authorization::from(revision.author.public_key() == Some(actor))
                 } else {
                     // Redacted.
                     Authorization::Unknown
@@ -852,7 +861,11 @@ impl Patch {
                 self.labels = BTreeSet::from_iter(labels);
             }
             Action::Assign { assignees } => {
-                self.assignees = BTreeSet::from_iter(assignees.into_iter().map(ActorId::from));
+                self.assignees = BTreeSet::from_iter(
+                    assignees
+                        .into_iter()
+                        .filter_map(|did| did.as_key().copied()),
+                );
             }
             Action::RevisionEdit {
                 revision,
@@ -1447,7 +1460,14 @@ impl Revision {
         timestamp: Timestamp,
         resolves: BTreeSet<(EntryId, CommentId)>,
     ) -> Self {
-        let description = Edit::new(*author.public_key(), description, timestamp, Vec::default());
+        let description = Edit::new(
+            *author
+                .public_key()
+                .expect("revision author must have a public key"),
+            description,
+            timestamp,
+            Vec::default(),
+        );
 
         Self {
             id,
@@ -1687,7 +1707,14 @@ impl Review {
         embeds: Vec<Embed<Uri>>,
         timestamp: Timestamp,
     ) -> Self {
-        let summary = NonEmpty::new(Edit::new(*author.public_key(), summary, timestamp, embeds));
+        let summary = NonEmpty::new(Edit::new(
+            *author
+                .public_key()
+                .expect("review author must have a public key"),
+            summary,
+            timestamp,
+            embeds,
+        ));
         Self {
             id,
             author,

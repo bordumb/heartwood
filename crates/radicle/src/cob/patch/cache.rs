@@ -741,7 +741,7 @@ mod tests {
         let id = RevisionId::from(arbitrary::oid());
         let mut revision = Revision::new(
             id,
-            Author { id: author },
+            Author { id: author.clone() },
             description,
             base,
             oid,
@@ -749,7 +749,7 @@ mod tests {
             resolves,
         );
         let comment = Comment::new(
-            *author,
+            *author.as_key().expect("test author must have a public key"),
             "#1 comment".to_string(),
             None,
             None,

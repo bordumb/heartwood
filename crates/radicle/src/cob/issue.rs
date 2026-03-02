@@ -338,11 +338,17 @@ impl Issue {
         actor: &ActorId,
         doc: &Doc,
     ) -> Result<Authorization, Error> {
-        if doc.is_delegate(&actor.into()) {
+        if doc.is_delegate(&Did::from(actor)) {
             // A delegate is authorized to do all actions.
             return Ok(Authorization::Allow);
         }
-        let author: ActorId = *self.author().id().as_key();
+
+        let is_author = self
+            .author()
+            .id()
+            .as_key()
+            .map_or(false, |author| author == actor);
+
         let outcome = match action {
             // Only delegate can assign someone to an issue.
             Action::Assign { assignees } => {
@@ -354,12 +360,9 @@ impl Issue {
                 }
             }
             // Issue authors can edit their own issues.
-            Action::Edit { .. } => Authorization::from(*actor == author),
+            Action::Edit { .. } => Authorization::from(is_author),
             // Issue authors can close or re-open their own issue.
-            Action::Lifecycle { state } => Authorization::from(match state {
-                State::Closed { .. } => *actor == author,
-                State::Open => *actor == author,
-            }),
+            Action::Lifecycle { .. } => Authorization::from(is_author),
             // Only delegate can label an issue.
             Action::Label { labels } => {
                 if labels == &self.labels {
@@ -1087,7 +1090,7 @@ mod test {
                 cob::Title::new("My first issue").unwrap(),
                 "Blah blah blah.",
                 &[],
-                &[assignee],
+                &[assignee.clone()],
                 [],
                 &node.signer,
             )
@@ -1102,7 +1105,7 @@ mod test {
 
         let mut issue = issues.get_mut(&id).unwrap();
         issue
-            .assign([assignee, assignee_two], &node.signer)
+            .assign([assignee.clone(), assignee_two.clone()], &node.signer)
             .unwrap();
 
         let id = issue.id;
@@ -1126,14 +1129,14 @@ mod test {
                 cob::Title::new("My first issue").unwrap(),
                 "Blah blah blah.",
                 &[],
-                &[assignee, assignee_two],
+                &[assignee.clone(), assignee_two.clone()],
                 [],
                 &node.signer,
             )
             .unwrap();
 
-        issue.assign([assignee_two], &node.signer).unwrap();
-        issue.assign([assignee_two], &node.signer).unwrap();
+        issue.assign([assignee_two.clone()], &node.signer).unwrap();
+        issue.assign([assignee_two.clone()], &node.signer).unwrap();
         issue.reload().unwrap();
 
         let assignees: Vec<_> = issue.assignees().cloned().collect::<Vec<_>>();
@@ -1225,14 +1228,14 @@ mod test {
                 cob::Title::new("My first issue").unwrap(),
                 "Blah blah blah.",
                 &[],
-                &[assignee, assignee_two],
+                &[assignee.clone(), assignee_two.clone()],
                 [],
                 &node.signer,
             )
             .unwrap();
         assert_eq!(2, issue.assignees().count());
 
-        issue.assign([assignee_two], &node.signer).unwrap();
+        issue.assign([assignee_two.clone()], &node.signer).unwrap();
         issue.reload().unwrap();
 
         let assignees: Vec<_> = issue.assignees().cloned().collect::<Vec<_>>();

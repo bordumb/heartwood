@@ -1,0 +1,21 @@
+{
+  "assignee": "bordumbb@gmail.com",
+  "claimed_at": "2026-03-02T13:55:48.315218Z",
+  "created_at": "2026-02-17T00:00:00.000000Z",
+  "depends_on": [
+    "fn-1.1"
+  ],
+  "epic_id": "fn-1",
+  "evidence": {
+    "commits": [],
+    "prs": [],
+    "tests": [
+      "cargo test -p radicle"
+    ]
+  },
+  "id": "fn-1.2",
+  "repo": "heartwood",
+  "status": "done",
+  "title": "Update Doc delegates to accept Did::Keri",
+  "updated_at": "2026-03-02T13:55:48.515576Z"
+}

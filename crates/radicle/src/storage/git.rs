@@ -443,7 +443,7 @@ impl Repository {
         let delegates = self
             .delegates()?
             .into_iter()
-            .map(|did| *did)
+            .filter_map(|did| did.as_key().copied())
             .collect::<BTreeSet<_>>();
         let mut deleted = Vec::new();
         for id in self.remote_ids()? {

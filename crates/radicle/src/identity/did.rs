@@ -98,6 +98,12 @@ impl From<PublicKey> for Did {
     }
 }
 
+impl From<&PublicKey> for Did {
+    fn from(key: &PublicKey) -> Self {
+        Self::Key(*key)
+    }
+}
+
 impl From<Did> for String {
     fn from(other: Did) -> Self {
         other.encode()

@@ -84,7 +84,9 @@ impl Summary {
     fn into_edits(self, author: &Author, timestamp: &Timestamp) -> NonEmpty<Edit> {
         match self {
             Summary::V1(summary) => NonEmpty::new(Edit::new(
-                *author.public_key(),
+                *author
+                    .public_key()
+                    .expect("review author must have a public key"),
                 summary.unwrap_or_default(),
                 *timestamp,
                 vec![],

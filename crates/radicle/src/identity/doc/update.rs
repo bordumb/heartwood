@@ -256,15 +256,19 @@ where
     let mut missing = Vec::with_capacity(dids.len());
 
     for did in dids {
-        match refs::SignedRefsAt::load((*did).into(), repo)? {
+        let Some(key) = did.as_key() else {
+            // KERI delegates don't have local signed refs yet (handled in fn-3).
+            continue;
+        };
+        match refs::SignedRefsAt::load(*key, repo)? {
             None => {
-                missing.push(error::DelegateVerification::MissingDelegate { did: *did });
+                missing.push(error::DelegateVerification::MissingDelegate { did: did.clone() });
             }
             Some(refs::SignedRefsAt { sigrefs, .. }) => {
                 if sigrefs.get(&canonical).is_none() {
                     missing.push(error::DelegateVerification::MissingDefaultBranch {
                         branch: canonical.to_ref_string(),
-                        did: *did,
+                        did: did.clone(),
                     });
                 }
             }

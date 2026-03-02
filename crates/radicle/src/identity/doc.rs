@@ -3,7 +3,7 @@ pub mod update;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::num::{NonZeroU32, NonZeroUsize};
-use std::ops::{Deref, Not};
+use std::ops::Deref;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::LazyLock;
@@ -442,9 +442,9 @@ impl RawDoc {
     /// Remove the `did` from the set of delegates. Returns `true` if it was
     /// removed.
     pub fn rescind(&mut self, did: &Did) -> Result<bool, DocError> {
-        let (matches, delegates) = self.delegates.iter().partition(|d| *d == did);
-        self.delegates = delegates;
-        Ok(matches.is_empty().not())
+        let len = self.delegates.len();
+        self.delegates.retain(|d| d != did);
+        Ok(len != self.delegates.len())
     }
 
     /// Construct the `RawDoc` from the set of `bytes` that are expected to be
@@ -802,7 +802,7 @@ impl Doc {
         signature: &Signature,
         blob: Oid,
     ) -> Result<(), PublicKey> {
-        if !self.is_delegate(&key.into()) {
+        if !self.is_delegate(&Did::from(key)) {
             return Err(*key);
         }
         if key.verify(AsRef::<[u8]>::as_ref(&blob), signature).is_err() {
@@ -988,8 +988,8 @@ mod test {
     fn test_duplicate_dids() {
         let delegate = Device::mock_from_seed([0xff; 32]);
         let did = Did::from(delegate.public_key());
-        let mut doc = RawDoc::new(gen::<Project>(1), vec![did], 1, Visibility::Public);
-        doc.delegate(did);
+        let mut doc = RawDoc::new(gen::<Project>(1), vec![did.clone()], 1, Visibility::Public);
+        doc.delegate(did.clone());
         let doc = doc.verified().unwrap();
         assert!(doc.delegates().len() == 1, "Duplicate DID was not removed");
         assert!(doc.delegates().first() == &did)
