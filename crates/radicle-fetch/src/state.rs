@@ -397,8 +397,8 @@ impl FetchState {
         let delegates = anchor
             .delegates()
             .iter()
-            .filter(|id| !handle.is_blocked(id))
-            .map(|did| PublicKey::from(*did))
+            .filter_map(|did| did.as_key().copied())
+            .filter(|pk| !handle.is_blocked(pk))
             .collect::<BTreeSet<_>>();
 
         log::trace!("Identity delegates {delegates:?}");

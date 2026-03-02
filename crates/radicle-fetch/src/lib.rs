@@ -131,6 +131,32 @@ where
     result
 }
 
+/// Discover KERI identity repos linked from a project repo.
+///
+/// After a project fetch (pull or clone), call this to find any DID namespace
+/// pointers in the project repo. Returns the `RepoId`s of identity repos that
+/// should be fetched separately. This is best-effort: errors during discovery
+/// are logged and result in an empty list.
+pub fn linked_identity_rids(repo: &Repository) -> Vec<radicle::identity::RepoId> {
+    match radicle::identity::discover_identity_refs(&repo.backend) {
+        Ok(refs) => {
+            let rids: Vec<_> = refs.into_iter().map(|(_, rid)| rid).collect();
+            if !rids.is_empty() {
+                log::debug!(
+                    "Discovered {} linked identity repo(s) in {}",
+                    rids.len(),
+                    repo.id,
+                );
+            }
+            rids
+        }
+        Err(e) => {
+            log::warn!("Failed to discover identity refs in {}: {e}", repo.id);
+            Vec::new()
+        }
+    }
+}
+
 fn perform_handshake<R, S>(handle: &mut Handle<R, S>) -> Result<Handshake, Error>
 where
     S: transport::ConnectionStream,
