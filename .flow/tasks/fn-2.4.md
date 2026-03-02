@@ -74,3 +74,16 @@ pub fn read_identity_pointer(
 - [ ] `read_identity_pointer()` reads back the same RID
 - [ ] Round-trip test in a temp git repo
 - [ ] Returns `None` (not error) when the ref does not exist
+
+## Done summary
+- Added `write_identity_namespace()` and `read_identity_pointer()` functions in `identity/namespace.rs`
+- `write_identity_namespace`: creates commit with "id" blob on `refs/namespaces/did-keri-<prefix>/refs/rad/id`
+- `read_identity_pointer`: reads blob, parses `RepoId`, returns `None` when ref absent
+- Round-trip test and missing-ref test both pass
+- Re-exported from `radicle::identity`
+- Why: Namespace pointers link project repos to KERI identity repos during push/fetch
+- Verification: `cargo test -p radicle -- identity::namespace` (7 tests pass)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle -- identity::namespace
+- PRs:
