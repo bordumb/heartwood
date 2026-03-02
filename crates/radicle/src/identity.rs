@@ -14,8 +14,8 @@ pub use did::Did;
 pub use doc::{Doc, DocAt, DocError, IdError, PayloadError, RawDoc, RepoId, Visibility};
 pub use keri::{KeriIdentityStore, KeriStoreError};
 pub use namespace::{
-    read_identity_pointer, write_identity_namespace, IdentityNamespace, IdentityPointer,
-    IdentityPointerError, NamespaceKind,
+    discover_identity_refs, read_identity_pointer, write_identity_namespace, IdentityNamespace,
+    IdentityPointer, IdentityPointerError, NamespaceKind,
 };
 pub use project::Project;
 

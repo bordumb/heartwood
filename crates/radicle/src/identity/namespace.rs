@@ -214,6 +214,43 @@ pub fn read_identity_pointer(
     Ok(Some(pointer.rid))
 }
 
+/// Parse the namespace component out of a full identity ref path.
+///
+/// `"refs/namespaces/did-keri-EXq5.../refs/rad/id"` → `IdentityNamespace` for `did-keri-EXq5...`
+fn parse_identity_ns_from_ref(ref_name: &str) -> Option<IdentityNamespace> {
+    let stripped = ref_name.strip_prefix("refs/namespaces/")?;
+    let component = stripped.split('/').next()?;
+    IdentityNamespace::from_ref_component(component)
+}
+
+/// Scan a project repo for KERI identity namespaces and return the RIDs
+/// of any referenced KERI identity repos.
+pub fn discover_identity_refs(
+    repo: &raw::Repository,
+) -> Result<Vec<(IdentityNamespace, RepoId)>, IdentityPointerError> {
+    let mut results = Vec::new();
+
+    let refs = repo
+        .references_glob("refs/namespaces/did-*/refs/rad/id")
+        .map_err(IdentityPointerError::Git)?;
+
+    for reference in refs {
+        let reference = reference.map_err(IdentityPointerError::Git)?;
+        let ref_name = match reference.name() {
+            Some(n) => n,
+            None => continue,
+        };
+
+        if let Some(ns) = parse_identity_ns_from_ref(ref_name) {
+            if let Ok(Some(rid)) = read_identity_pointer(repo, &ns) {
+                results.push((ns, rid));
+            }
+        }
+    }
+
+    Ok(results)
+}
+
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod tests {
@@ -297,5 +334,78 @@ mod tests {
     #[test]
     fn test_namespace_kind_garbage_returns_none() {
         assert!(NamespaceKind::from_component("unknown-garbage").is_none());
+    }
+
+    #[test]
+    fn test_discover_identity_refs_with_one_namespace() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = crate::git::raw::Repository::init_bare(dir.path()).unwrap();
+
+        let ns = IdentityNamespace::new(Did::Keri(
+            "EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into(),
+        ));
+        let rid: RepoId = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5".parse().unwrap();
+        write_identity_namespace(&repo, &ns, &rid).unwrap();
+
+        let discovered = discover_identity_refs(&repo).unwrap();
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].1, rid);
+    }
+
+    #[test]
+    fn test_discover_identity_refs_empty_repo() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = crate::git::raw::Repository::init_bare(dir.path()).unwrap();
+
+        let discovered = discover_identity_refs(&repo).unwrap();
+        assert!(discovered.is_empty());
+    }
+
+    #[test]
+    fn test_discover_identity_refs_ignores_peer_namespaces() {
+        let dir = tempfile::tempdir().unwrap();
+        let repo = crate::git::raw::Repository::init_bare(dir.path()).unwrap();
+
+        // Write an identity namespace.
+        let ns = IdentityNamespace::new(Did::Keri(
+            "EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into(),
+        ));
+        let rid: RepoId = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5".parse().unwrap();
+        write_identity_namespace(&repo, &ns, &rid).unwrap();
+
+        // Also create a peer-style ref (not a DID namespace).
+        let sig = crate::git::raw::Signature::now("test", "test@test").unwrap();
+        let blob_oid = repo.blob(b"dummy").unwrap();
+        let mut tb = repo.treebuilder(None).unwrap();
+        tb.insert("data", blob_oid, 0o100644).unwrap();
+        let tree_oid = tb.write().unwrap();
+        drop(tb);
+        let tree = repo.find_tree(tree_oid).unwrap();
+        let commit_oid = repo
+            .commit(None, &sig, &sig, "peer ns", &tree, &[])
+            .unwrap();
+        repo.reference(
+            "refs/namespaces/z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK/refs/rad/sigrefs",
+            commit_oid,
+            true,
+            "peer ref",
+        )
+        .unwrap();
+
+        // Only the identity namespace should be discovered.
+        let discovered = discover_identity_refs(&repo).unwrap();
+        assert_eq!(discovered.len(), 1);
+        assert_eq!(discovered[0].1, rid);
+    }
+
+    #[test]
+    fn test_parse_identity_ns_from_ref() {
+        let ref_name =
+            "refs/namespaces/did-keri-EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148/refs/rad/id";
+        let ns = parse_identity_ns_from_ref(ref_name).unwrap();
+        assert_eq!(
+            ns.ref_component(),
+            "did-keri-EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148"
+        );
     }
 }

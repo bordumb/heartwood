@@ -55,7 +55,18 @@ fn parse_identity_ns_from_ref(ref_name: &str) -> Option<IdentityNamespace> {
 
 ## Acceptance Criteria
 
-- [ ] Returns correct `(IdentityNamespace, RepoId)` pairs for each DID namespace
-- [ ] Returns empty vec (not error) when no DID namespaces exist
-- [ ] Test with a temp git repo containing one DID namespace ref
-- [ ] Test with a repo containing both peer and identity namespace refs (only identity returned)
+- [x] Returns correct `(IdentityNamespace, RepoId)` pairs for each DID namespace
+- [x] Returns empty vec (not error) when no DID namespaces exist
+- [x] Test with a temp git repo containing one DID namespace ref
+- [x] Test with a repo containing both peer and identity namespace refs (only identity returned)
+
+## Done summary
+- Added `discover_identity_refs()` in `identity/namespace.rs` (not `storage/git.rs` — co-located with `read_identity_pointer`)
+- Added `parse_identity_ns_from_ref()` helper to extract namespace component from full ref path
+- Re-exported from `radicle::identity`
+- 4 new tests: one-namespace discovery, empty repo, ignores peer namespaces, ref parsing
+- Verification: `cargo test -p radicle -- identity::namespace` (14 tests pass)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle -- identity::namespace
+- PRs:
