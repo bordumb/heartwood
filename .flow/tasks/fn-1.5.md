@@ -49,6 +49,17 @@ kept in a `feature = ["multi-device"]` gate so the dependency is opt-in.
 
 ## Acceptance Criteria
 
-- [ ] `cargo build -p radicle` succeeds after adding the dependency
-- [ ] No duplicate/conflicting crates at different versions (check `cargo tree`)
+- [x] `cargo build -p radicle` succeeds after adding the dependency
+- [x] No duplicate/conflicting crates at different versions (check `cargo tree`)
 - [ ] `auths_radicle::RadicleAuthsBridge` is importable from `radicle` tests
+
+## Done summary
+- Extended `Did` from a newtype to an enum with `Key(PublicKey)` and `Keri(String)` variants
+- Added `FromStr`/`Display` round-trip for both `did:key:` and `did:keri:` formats
+- Added helper methods: `as_key()`, `as_keri_prefix()`, `is_rotatable()`, `to_ref_component()`
+- Why: Foundation for multi-device identity support via KERI DIDs
+- Verification: `cargo test -p radicle -- identity::did` passes (4 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:
