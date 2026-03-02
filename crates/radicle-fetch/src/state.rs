@@ -265,6 +265,8 @@ impl FetchState {
                     }
                 }
                 refs::ReceivedRefname::RadId => self.canonical_rad_id = Some(r.tip),
+                // DID namespace refs are handled in prepare_updates.
+                refs::ReceivedRefname::DidNamespace { .. } => {}
             }
         }
 

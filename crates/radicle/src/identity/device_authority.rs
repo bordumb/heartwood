@@ -20,7 +20,7 @@ pub enum DeviceAuthority {
     /// Device key is attested under a KERI identity that is a delegate.
     AttestedDevice {
         device_key: PublicKey,
-        identity_did: String, // "did:keri:<prefix>"
+        identity_did: Did,
     },
 }
 
@@ -77,14 +77,9 @@ impl DeviceAuthorityChecker for CompositeAuthorityChecker {
         }
 
         // Slow path: attestation lookup via the auths bridge.
-        let key_bytes: [u8; 32] = signer
-            .as_ref()
-            .try_into()
-            .map_err(|_| AuthorityError::Bridge("invalid key length".into()))?;
-
         let request = VerifyRequest {
-            signer_key: &key_bytes,
-            repo_id: &repo_id.to_string(),
+            signer_key: signer,
+            repo_id,
             now: now(),
             mode: EnforcementMode::Enforce,
             known_remote_tip: None,
@@ -99,20 +94,16 @@ impl DeviceAuthorityChecker for CompositeAuthorityChecker {
 
         match result {
             VerifyResult::Verified { .. } => {
-                let device_did = self.bridge.device_did(&key_bytes);
+                let device_did = self.bridge.device_did(signer);
                 // Find the KERI identity that controls this device.
                 let identity_did = self
                     .bridge
-                    .find_identity_for_device(&device_did, &repo_id.to_string())
+                    .find_identity_for_device(&device_did, repo_id)
                     .map_err(|e| AuthorityError::Bridge(e.to_string()))?
                     .ok_or(AuthorityError::NotAuthorized)?;
 
                 // Verify the KERI identity is a delegate in the project doc.
-                let keri_prefix = identity_did
-                    .strip_prefix("did:keri:")
-                    .unwrap_or(&identity_did);
-                let identity_did_val = Did::Keri(keri_prefix.to_string());
-                if !doc.is_delegate(&identity_did_val) {
+                if !doc.is_delegate(&identity_did) {
                     return Err(AuthorityError::NotAuthorized);
                 }
 
@@ -125,10 +116,10 @@ impl DeviceAuthorityChecker for CompositeAuthorityChecker {
             VerifyResult::Warn { .. } => {
                 // In observe mode the bridge downgrades rejections to warnings.
                 // Still allow, but find identity for the result.
-                let device_did = self.bridge.device_did(&key_bytes);
+                let device_did = self.bridge.device_did(signer);
                 let identity_did = self
                     .bridge
-                    .find_identity_for_device(&device_did, &repo_id.to_string())
+                    .find_identity_for_device(&device_did, repo_id)
                     .map_err(|e| AuthorityError::Bridge(e.to_string()))?
                     .ok_or(AuthorityError::NotAuthorized)?;
 
@@ -140,9 +131,7 @@ impl DeviceAuthorityChecker for CompositeAuthorityChecker {
             VerifyResult::Quarantine { reason, .. } => Err(AuthorityError::Bridge(format!(
                 "identity repo needs fetching: {reason}"
             ))),
-            _ => Err(AuthorityError::Bridge(
-                "unexpected verify result".into(),
-            )),
+            _ => Err(AuthorityError::Bridge("unexpected verify result".into())),
         }
     }
 }

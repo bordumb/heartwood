@@ -10,7 +10,8 @@ edition.workspace = true
 rust-version.workspace = true
 
 [features]
-default = []
+default = ["sqlite"]
+sqlite = ["dep:sqlite", "radicle-core/sqlite", "radicle-crypto/sqlite"]
 test = ["tempfile", "qcheck", "radicle-crypto/test", "radicle-cob/test"]
 logger = ["colored"]
 qcheck = [
@@ -43,8 +44,8 @@ multibase = { workspace = true }
 nonempty = { workspace = true, features = ["serialize"] }
 qcheck = { workspace = true, optional = true }
 radicle-cob = { workspace = true, features = ["git2"] }
-radicle-core = { workspace = true, features = ["git2", "serde", "sqlite"] }
-radicle-crypto = { workspace = true, features = ["git-ref-format-core", "ssh", "sqlite", "cyphernet"] }
+radicle-core = { workspace = true, features = ["git2", "serde"] }
+radicle-crypto = { workspace = true, features = ["git-ref-format-core", "ssh", "cyphernet"] }
 radicle-git-ref-format = { workspace = true, features = ["macro", "serde"] }
 radicle-localtime = { workspace = true, features = ["serde"] }
 radicle-oid = { workspace = true, features = ["git2", "serde", "std", "sha1"] }
@@ -54,7 +55,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true, features = ["preserve_order"] }
 serde-untagged = "0.1.7"
 siphasher = "1.0.0"
-sqlite = { workspace = true, features = ["bundled"] }
+sqlite = { workspace = true, features = ["bundled"], optional = true }
 tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true, default-features = true }
 unicode-normalization = { version = "0.1" }

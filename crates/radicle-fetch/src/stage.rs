@@ -342,6 +342,8 @@ impl ProtocolStage for SpecialRefs {
             ReceivedRefname::Namespaced { ref suffix, .. } if suffix.is_left() => {
                 Some(ReceivedRef::new(tip, refname))
             }
+            // Accept DID namespace refs so they propagate between nodes.
+            ReceivedRefname::DidNamespace { .. } => Some(ReceivedRef::new(tip, refname)),
             ReceivedRefname::Namespaced { .. } | ReceivedRefname::RadId => None,
         }
     }
@@ -370,7 +372,30 @@ impl ProtocolStage for SpecialRefs {
         _repo: &Repository,
         refs: &'a [ReceivedRef],
     ) -> Result<Updates<'a>, error::Prepare> {
-        special_refs_updates(&self.delegates, &self.blocked, refs)
+        let mut updates = special_refs_updates(&self.delegates, &self.blocked, refs)?;
+
+        // Add DID namespace refs as direct updates. These don't belong to a
+        // peer namespace but should be propagated to the local refdb.
+        for r in refs {
+            if let refs::ReceivedRefname::DidNamespace { ref ref_name } = &r.name {
+                if let Some(namespaced) = ref_name.to_namespaced() {
+                    // Group under the first delegate — the key is just for
+                    // grouping, the actual ref name is in the Update.
+                    if let Some(&delegate) = self.delegates.iter().next() {
+                        updates.add(
+                            delegate,
+                            Update::Direct {
+                                name: namespaced.to_owned(),
+                                target: r.tip,
+                                no_ff: Policy::Allow,
+                            },
+                        );
+                    }
+                }
+            }
+        }
+
+        Ok(updates)
     }
 }
 
@@ -596,7 +621,7 @@ fn special_refs_updates<'a>(
             refs::ReceivedRefname::Namespaced { remote, suffix } => {
                 (!blocked.is_blocked(remote)).then_some((remote, r.tip, suffix.clone()))
             }
-            refs::ReceivedRefname::RadId => None,
+            refs::ReceivedRefname::RadId | refs::ReceivedRefname::DidNamespace { .. } => None,
         })
         .fold(
             BTreeMap::<PublicKey, Vec<_>>::new(),

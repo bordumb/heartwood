@@ -75,6 +75,15 @@ pub(crate) enum ReceivedRefname<'a> {
     },
     /// The canonical `refs/rad/id` reference
     RadId,
+    /// A DID identity namespace reference.
+    ///
+    /// # Examples
+    ///
+    ///   * `refs/namespaces/did-keri-EXq5.../refs/rad/id`
+    DidNamespace {
+        /// The full qualified ref name.
+        ref_name: Qualified<'a>,
+    },
 }
 
 impl<'a> ReceivedRefname<'a> {
@@ -96,6 +105,7 @@ impl<'a> ReceivedRefname<'a> {
                 }
             },
             Self::RadId => REFS_RAD_ID.clone(),
+            Self::DidNamespace { ref_name } => ref_name.clone(),
         }
     }
 
@@ -108,6 +118,7 @@ impl<'a> ReceivedRefname<'a> {
                 }
             }),
             Self::RadId => None,
+            Self::DidNamespace { .. } => None,
         }
     }
 }
@@ -116,7 +127,22 @@ impl TryFrom<BString> for ReceivedRefname<'_> {
     type Error = Error;
 
     fn try_from(value: BString) -> Result<Self, Self::Error> {
-        match git::parse_ref::<PublicKey>(value.to_str()?)? {
+        let s = value.to_str()?;
+
+        // Check for DID namespace refs before attempting PublicKey parsing,
+        // since "did-keri-..." is not a valid PublicKey.
+        if s.starts_with("refs/namespaces/did-") {
+            let refstr = git::fmt::RefStr::try_from_str(s)?;
+            let qualified = git::fmt::Qualified::from_refstr(refstr)
+                .ok_or_else(|| {
+                    Error::Ref(git::RefError::Unqualified(refstr.to_owned()))
+                })?;
+            return Ok(ReceivedRefname::DidNamespace {
+                ref_name: qualified.to_owned(),
+            });
+        }
+
+        match git::parse_ref::<PublicKey>(s)? {
             (None, name) => (name == *REFS_RAD_ID)
                 .then_some(ReceivedRefname::RadId)
                 .ok_or_else(|| Error::NotCanonicalRadID(name.to_owned())),
@@ -153,7 +179,7 @@ impl ReceivedRef {
         F: Fn(&PublicKey) -> bool,
     {
         match &self.name {
-            ReceivedRefname::RadId => None,
+            ReceivedRefname::RadId | ReceivedRefname::DidNamespace { .. } => None,
             ReceivedRefname::Namespaced { remote, suffix } => {
                 special_update(remote, suffix, self.tip, is_delegate).map(|up| (*remote, up))
             }

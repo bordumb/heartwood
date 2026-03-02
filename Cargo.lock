@@ -357,6 +357,8 @@ dependencies = [
  "chrono",
  "git2",
  "json-canon",
+ "radicle-core",
+ "radicle-crypto",
  "ring",
  "serde",
  "serde_json",

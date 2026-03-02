@@ -4,6 +4,7 @@ use std::sync::Mutex;
 
 use crate::crypto::PublicKey;
 use crate::git::raw;
+use crate::identity::Did;
 
 use auths_radicle::RadAttestation;
 
@@ -114,16 +115,13 @@ impl KeriIdentityStore for GitKeriIdentityStore {
             .ok_or_else(|| KeriStoreError::AttestationNotFound(*nid))?;
 
         let payload = auths_radicle::RadCanonicalPayload {
-            did: String::new(), // Filled by caller with identity DID
-            rid: String::new(), // Filled by caller with repo RID
+            did: "did:keri:DUMMY".parse().unwrap(), // Filled by caller with identity DID
+            rid: "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5".parse().unwrap(), // Filled by caller with repo RID
         };
 
-        let device_did = format!("did:key:{nid_str}");
-        let device_pk_bytes: [u8; 32] = nid.as_ref().try_into().map_err(|_| {
-            KeriStoreError::Serde("device key is not 32 bytes".into())
-        })?;
+        let device_did = Did::from(*nid);
 
-        RadAttestation::from_blobs(&dk_blob, &dkeri_blob, payload, device_did, device_pk_bytes)
+        RadAttestation::from_blobs(&dk_blob, &dkeri_blob, payload, device_did, *nid)
             .map_err(|e| KeriStoreError::Serde(e.to_string()))
     }
 
