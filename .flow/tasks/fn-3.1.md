@@ -74,3 +74,17 @@ pub use device_authority::{DeviceAuthority, DeviceAuthorityChecker, AuthorityErr
 - [ ] `DeviceAuthority` implements `Debug` and `Clone`
 - [ ] `AuthorityError` implements `std::error::Error`
 - [ ] Re-exported from `radicle::identity`
+
+## Done summary
+- Created `identity/device_authority.rs` with `DeviceAuthority` enum, `AuthorityError`, and `DeviceAuthorityChecker` trait
+- `DeviceAuthority::DirectDelegate` for keys directly in the Doc delegates
+- `DeviceAuthority::AttestedDevice` for keys attested via KERI identity
+- `DeviceAuthorityChecker` trait with `check()` method (Send + Sync bounds)
+- Simplified vs spec: removed `DateTime<Utc>` and `capabilities` fields (auths-radicle handles policy evaluation internally)
+- Re-exported from `radicle::identity`
+- Why: Port for multi-device authorization checks during signed ref verification
+- Verification: `cargo check -p radicle` passes
+## Evidence
+- Commits:
+- Tests: cargo check -p radicle
+- PRs:
