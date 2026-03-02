@@ -58,6 +58,17 @@ pub use keri::{KeriIdentityStore, KeriStoreError};
 
 ## Acceptance Criteria
 
-- [ ] Trait compiles with correct bounds (`Send + Sync`)
-- [ ] `KeriStoreError` implements `std::error::Error`
-- [ ] Re-exported from `radicle::identity`
+- [x] Trait compiles with correct bounds (`Send + Sync`)
+- [x] `KeriStoreError` implements `std::error::Error`
+- [x] Re-exported from `radicle::identity`
+
+## Done summary
+- Extended `Did` from a newtype to an enum with `Key(PublicKey)` and `Keri(String)` variants
+- Added `FromStr`/`Display` round-trip for both `did:key:` and `did:keri:` formats
+- Added helper methods: `as_key()`, `as_keri_prefix()`, `is_rotatable()`, `to_ref_component()`
+- Why: Foundation for multi-device identity support via KERI DIDs
+- Verification: `cargo test -p radicle -- identity::did` passes (4 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:

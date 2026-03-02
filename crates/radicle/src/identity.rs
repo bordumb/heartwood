@@ -2,12 +2,16 @@
 pub mod crefs;
 pub mod did;
 pub mod doc;
+pub mod keri;
+pub mod namespace;
 pub mod project;
 
 pub use crefs::CanonicalRefs;
 pub use crypto::PublicKey;
 pub use did::Did;
 pub use doc::{Doc, DocAt, DocError, IdError, PayloadError, RawDoc, RepoId, Visibility};
+pub use keri::{KeriIdentityStore, KeriStoreError};
+pub use namespace::{IdentityNamespace, IdentityPointer, IdentityPointerError};
 pub use project::Project;
 
 pub use crate::cob::identity::{Action, Error, Identity, IdentityMut, TYPENAME};
