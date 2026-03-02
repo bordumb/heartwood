@@ -56,6 +56,8 @@ pub enum Error {
     Ref(#[from] git::RefError),
     #[error(transparent)]
     Git(#[from] git::raw::Error),
+    #[error("authority check failed: {0}")]
+    Authority(#[from] crate::identity::AuthorityError),
 }
 
 impl Error {
@@ -256,6 +258,26 @@ impl SignedRefs<Unverified> {
             );
         }
         Ok(())
+    }
+
+    /// Verify both the cryptographic signature AND the device's authority.
+    ///
+    /// This is the preferred verification method for multi-device identity.
+    /// - Step 1: Ed25519 signature check (unchanged, owned by Radicle)
+    /// - Step 2: Device authority check via `checker` (attested or direct delegate)
+    pub fn verify_with_authority<R: ReadRepository>(
+        &self,
+        repo: &R,
+        checker: &dyn crate::identity::DeviceAuthorityChecker,
+        doc: &crate::identity::Doc,
+        repo_id: &RepoId,
+    ) -> Result<crate::identity::DeviceAuthority, Error> {
+        // Step 1: crypto verification (reuse existing logic).
+        self.verify(repo)?;
+
+        // Step 2: authority check.
+        let authority = checker.check(&self.id, doc, repo_id)?;
+        Ok(authority)
     }
 }
 

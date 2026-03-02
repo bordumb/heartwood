@@ -79,3 +79,15 @@ pub enum VerifyError {
 - [ ] Test: valid attested device → `Ok((_, AttestedDevice { .. }))`
 - [ ] Test: invalid signature → `Err(VerifyError::InvalidSignature)` (before authority check)
 - [ ] Test: valid crypto, unauthorized device → `Err(VerifyError::Authority(..))`
+
+## Done summary
+- Added `verify_with_authority()` method to `SignedRefs<Unverified>` in `storage/refs.rs`
+- Two-step verification: crypto first (reuses `verify()`), then authority check via `DeviceAuthorityChecker`
+- Added `Authority(AuthorityError)` variant to `refs::Error`
+- Existing `verify()` method unchanged for backwards compatibility
+- Why: Enables multi-device verification where attested devices can sign refs for KERI delegates
+- Verification: `cargo check -p radicle` and `cargo test -p radicle` pass (244 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:
