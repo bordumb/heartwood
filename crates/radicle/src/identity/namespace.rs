@@ -1,8 +1,48 @@
 use std::str::FromStr;
 
+use crate::crypto::PublicKey;
 use crate::git::raw;
 use crate::identity::did::Did;
 use crate::identity::doc::RepoId;
+
+/// Classification of a `refs/namespaces/<component>` entry.
+#[derive(Debug)]
+pub enum NamespaceKind {
+    /// A peer device namespace: `refs/namespaces/<nid>/...`
+    Peer(PublicKey),
+    /// A KERI identity namespace: `refs/namespaces/did-keri-<prefix>/...`
+    Identity(IdentityNamespace),
+}
+
+impl NamespaceKind {
+    /// Parse a namespace component into its kind.
+    ///
+    /// Returns `None` if the component is neither a valid NodeId nor a
+    /// recognized DID format.
+    pub fn from_component(component: &str) -> Option<Self> {
+        if let Ok(nid) = PublicKey::from_str(component) {
+            return Some(Self::Peer(nid));
+        }
+        if let Some(ns) = IdentityNamespace::from_ref_component(component) {
+            return Some(Self::Identity(ns));
+        }
+        None
+    }
+
+    pub fn as_peer(&self) -> Option<&PublicKey> {
+        match self {
+            Self::Peer(nid) => Some(nid),
+            Self::Identity(_) => None,
+        }
+    }
+
+    pub fn as_identity(&self) -> Option<&IdentityNamespace> {
+        match self {
+            Self::Peer(_) => None,
+            Self::Identity(ns) => Some(ns),
+        }
+    }
+}
 
 /// A git ref namespace component derived from a DID.
 ///
@@ -12,6 +52,7 @@ use crate::identity::doc::RepoId;
 ///
 /// A ref component starting with `did-` indicates an identity namespace
 /// rather than an ordinary peer namespace.
+#[derive(Debug)]
 pub struct IdentityNamespace {
     did: Did,
 }
@@ -235,5 +276,26 @@ mod tests {
         let ns = IdentityNamespace::new(Did::Keri("EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into()));
         let result = read_identity_pointer(&repo, &ns).unwrap();
         assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_namespace_kind_peer() {
+        let nid = "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK";
+        let kind = NamespaceKind::from_component(nid).unwrap();
+        assert!(kind.as_peer().is_some());
+        assert!(kind.as_identity().is_none());
+    }
+
+    #[test]
+    fn test_namespace_kind_identity() {
+        let component = "did-keri-EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148";
+        let kind = NamespaceKind::from_component(component).unwrap();
+        assert!(kind.as_identity().is_some());
+        assert!(kind.as_peer().is_none());
+    }
+
+    #[test]
+    fn test_namespace_kind_garbage_returns_none() {
+        assert!(NamespaceKind::from_component("unknown-garbage").is_none());
     }
 }
