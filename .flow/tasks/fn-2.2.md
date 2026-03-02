@@ -102,3 +102,16 @@ fn list_devices(&self) -> Result<Vec<NodeId>, KeriStoreError> {
 - [ ] `list_devices()` returns all stored NIDs
 - [ ] `key_state()` replays KEL events correctly
 - [ ] Integration test: init → store attestation → list → load
+
+## Done summary
+- Implemented `GitKeriIdentityStore` struct wrapping `Mutex<raw::Repository>` with `open()` and `init()` constructors
+- Implemented `KeriIdentityStore` trait: `list_devices()` (glob refs/keys/*/signatures), `load_attestation()` (read did-key + did-keri blobs via `RadAttestation::from_blobs`), `store_attestation()` (write blob commits via `att.to_blobs()`)
+- Extracted helpers: `read_blob_content()` and `write_blob_commit()` for DRY blob I/O
+- Uses `auths_radicle::refs` constants for ref paths and blob names
+- `key_state()` deferred — `auths-id` GitKel custom ref support (fn-A.5.2) not yet available
+- Why: Git-backed KERI identity storage is required for multi-device attestation management
+- Verification: `cargo check -p radicle` and `cargo test -p radicle` pass (237 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:
