@@ -3793,7 +3793,9 @@ name = "radicle"
 version = "0.21.0"
 dependencies = [
  "amplify",
+ "auths-id",
  "auths-radicle",
+ "auths-verifier",
  "base64 0.21.7",
  "bytesize",
  "chrono",

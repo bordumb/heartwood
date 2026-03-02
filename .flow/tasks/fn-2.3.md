@@ -79,3 +79,17 @@ fn map_err(e: KeriStoreError) -> BridgeError {
 - [ ] `HeartwooodAuthsStorage::find_identity_for_device()` locates the right identity repo
 - [ ] Implements `AuthsStorage` bound (`Send + Sync`)
 - [ ] Unit tests with mock storage (or test fixtures)
+
+## Done summary
+- Created `storage/auths_adapter.rs` with `HeartwooodAuthsStorage` struct
+- Implements `auths_radicle::AuthsStorage` by scanning Heartwood's storage directory for KERI identity repos
+- `load_key_state` / `load_attestation` / `local_identity_tip`: find identity repo via namespace pointer scan, delegate to `GitRadicleStorage`
+- `find_identity_for_device`: enumerate DID namespace refs in project repo, check each identity repo for device attestation
+- Extracted helpers: `list_repo_dirs`, `read_namespace_pointer`, `has_kel_ref`, `enumerate_identity_namespaces`
+- Added `auths-id` and `auths-verifier` as path dependencies for trait return types
+- Why: Bridges auths-radicle's verification pipeline to Heartwood's multi-repo storage layout
+- Verification: `cargo check -p radicle` and `cargo test -p radicle` pass (242 tests)
+## Evidence
+- Commits:
+- Tests: cargo test -p radicle
+- PRs:

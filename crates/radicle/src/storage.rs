@@ -1,3 +1,4 @@
+pub mod auths_adapter;
 pub mod git;
 pub mod refs;
 
