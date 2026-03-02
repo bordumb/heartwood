@@ -212,7 +212,7 @@ impl Identity {
             heads: revision
                 .delegates()
                 .iter()
-                .copied()
+                .cloned()
                 .map(|did| (did, root))
                 .collect(),
             revisions: BTreeMap::from_iter([(root, Some(revision))]),
@@ -383,17 +383,23 @@ impl store::Cob for Identity {
         }
         assert_eq!(root.commit, op.id);
 
-        let founder = root.delegates().first();
-        if founder.as_key() != &op.author {
+        let founder_did = root.delegates().first();
+        let founder_pk = if let Some(pk) = founder_did.as_key() {
+            pk
+        } else {
+            return Err(ApplyError::Init("founder must have a public key"));
+        };
+
+        if founder_pk != &op.author {
             return Err(ApplyError::Init("delegate does not match committer"));
         }
         // Verify signature against root document. Since there is no previous document,
         // we verify it against itself.
         if root
-            .verify_signature(founder, &signature, root.blob)
+            .verify_signature(founder_pk, &signature, root.blob)
             .is_err()
         {
-            return Err(ApplyError::InvalidSignature(**founder, root.blob));
+            return Err(ApplyError::InvalidSignature(*founder_pk, root.blob));
         }
         let revision = Revision::new(
             root.commit,
@@ -514,7 +520,7 @@ impl Identity {
                     // You can't edit an inactive revision.
                     return Err(ApplyError::UnexpectedState);
                 }
-                if revision.author.public_key() != &author {
+                if revision.author.public_key().map_or(true, |k| k != &author) {
                     // Can't edit someone else's revision.
                     // Since the author never changes, we can safely mark this as invalid.
                     return Err(ApplyError::NotAuthorized);
@@ -535,7 +541,7 @@ impl Identity {
                             // You can't redact an accepted revision.
                             return Err(ApplyError::UnexpectedState);
                         }
-                        if r.author.public_key() != &author {
+                        if r.author.public_key().map_or(true, |k| k != &author) {
                             // Can't redact someone else's revision.
                             // Since the author never changes, we can safely mark this as invalid.
                             return Err(ApplyError::NotAuthorized);
@@ -798,7 +804,11 @@ impl Revision {
         parent: Option<RevisionId>,
         timestamp: Timestamp,
     ) -> Self {
-        let verdicts = BTreeMap::from_iter([(*author.public_key(), Verdict::Accept(signature))]);
+        let verdicts = author
+            .public_key()
+            .map(|pk| (*pk, Verdict::Accept(signature)))
+            .into_iter()
+            .collect();
 
         Self {
             id,

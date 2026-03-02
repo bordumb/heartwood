@@ -62,7 +62,7 @@ where
     S: WriteStorage,
 {
     // TODO: Better error when project id already exists in storage, but remote doesn't.
-    let delegate: identity::Did = signer.public_key().into();
+    let delegate: identity::Did = identity::Did::from(signer.public_key());
     let proj = Project::new(
         name.to_owned(),
         description.to_owned(),

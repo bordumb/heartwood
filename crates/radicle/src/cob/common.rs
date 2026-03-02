@@ -138,7 +138,7 @@ impl Author {
         &self.id
     }
 
-    pub fn public_key(&self) -> &PublicKey {
+    pub fn public_key(&self) -> Option<&PublicKey> {
         self.id.as_key()
     }
 }

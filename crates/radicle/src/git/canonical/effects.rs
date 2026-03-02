@@ -214,36 +214,38 @@ impl FindObjects for git::raw::Repository {
         let mut missing_refs = BTreeSet::new();
         let mut missing_objects = BTreeMap::new();
         for did in dids {
-            let name = &refname.with_namespace(did.as_key().into());
-            let reference = match self.find_reference(name.as_str()) {
-                Ok(reference) => reference,
-                Err(e) if e.is_not_found() => {
-                    missing_refs.insert(name.to_owned());
+            if let Some(key) = did.as_key() {
+                let name = &refname.with_namespace(key.into());
+                let reference = match self.find_reference(name.as_str()) {
+                    Ok(reference) => reference,
+                    Err(e) if e.is_not_found() => {
+                        missing_refs.insert(name.to_owned());
+                        continue;
+                    }
+                    Err(e) => {
+                        return Err(FindObjectsError::find_reference(name.to_owned(), e));
+                    }
+                };
+                let Some(oid) = reference.target().map(Oid::from) else {
+                    log::warn!(target: "radicle", "Missing target for reference `{name}`");
                     continue;
-                }
-                Err(e) => {
-                    return Err(FindObjectsError::find_reference(name.to_owned(), e));
-                }
-            };
-            let Some(oid) = reference.target().map(Oid::from) else {
-                log::warn!(target: "radicle", "Missing target for reference `{name}`");
-                continue;
-            };
-            let object = match self.find_object(oid.into(), None) {
-                Ok(object) => Object::new(&object).ok_or_else(|| {
-                    FindObjectsError::invalid_object_type(
-                        *did,
-                        oid,
-                        object.kind().map(|kind| kind.to_string()),
-                    )
-                }),
-                Err(err) if err.is_not_found() => {
-                    missing_objects.insert(*did, oid);
-                    continue;
-                }
-                Err(err) => Err(FindObjectsError::find_object(oid, err)),
-            };
-            objects.insert(*did, object?);
+                };
+                let object = match self.find_object(oid.into(), None) {
+                    Ok(object) => Object::new(&object).ok_or_else(|| {
+                        FindObjectsError::invalid_object_type(
+                            did.clone(),
+                            oid,
+                            object.kind().map(|kind| kind.to_string()),
+                        )
+                    }),
+                    Err(err) if err.is_not_found() => {
+                        missing_objects.insert(did.clone(), oid);
+                        continue;
+                    }
+                    Err(err) => Err(FindObjectsError::find_object(oid, err)),
+                };
+                objects.insert(did.clone(), object?);
+            }
         }
         Ok(FoundObjects {
             objects,

@@ -1,0 +1,21 @@
+{
+  "assignee": "bordumbb@gmail.com",
+  "claimed_at": "2026-03-02T13:54:39.153580Z",
+  "created_at": "2026-02-17T00:00:00.000000Z",
+  "depends_on": [],
+  "epic_id": "fn-1",
+  "evidence": {
+    "commits": [
+      "5fe4ffae48cc53fd520747a379da5634731c0f48"
+    ],
+    "prs": [],
+    "tests": [
+      "cargo test -p radicle -- identity::did"
+    ]
+  },
+  "id": "fn-1.1",
+  "repo": "heartwood",
+  "status": "done",
+  "title": "Extend Did enum to support did:keri: DID method",
+  "updated_at": "2026-03-02T13:55:08.317624Z"
+}

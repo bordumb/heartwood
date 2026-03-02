@@ -494,8 +494,10 @@ pub struct Missing {
 impl Missing {
     fn found<'a>(&mut self, did: &Did, refname: &Qualified<'a>) {
         self.objects.remove(did);
-        self.refs
-            .remove(&refname.with_namespace((did.as_key()).into()).to_owned());
+        if let Some(key) = did.as_key() {
+            self.refs
+                .remove(&refname.with_namespace(key.into()).to_owned());
+        }
     }
 }
 
