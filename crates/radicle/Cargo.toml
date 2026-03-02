@@ -12,7 +12,7 @@ rust-version.workspace = true
 [features]
 default = []
 test = ["tempfile", "qcheck", "radicle-crypto/test", "radicle-cob/test"]
-logger = ["colored", "chrono"]
+logger = ["colored"]
 qcheck = [
   "radicle-core/qcheck",
   "dep:qcheck"
@@ -28,7 +28,7 @@ schemars = [
 amplify = { workspace = true, features = ["std"] }
 base64 = "0.21.3"
 bytesize = { version = "2", features = ["serde"] }
-chrono = { workspace = true, features = ["clock"], optional = true }
+chrono = { workspace = true, features = ["clock"] }
 colored = { workspace = true, optional = true }
 crossbeam-channel = { workspace = true }
 cyphernet = { workspace = true, features = ["tor", "dns", "p2p-ed25519"] }
