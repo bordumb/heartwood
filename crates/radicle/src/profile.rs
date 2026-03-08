@@ -1003,4 +1003,31 @@ mod test {
 
         assert_eq!(prefix1, prefix2, "Migration must be idempotent");
     }
+
+    #[test]
+    fn test_migration_produces_valid_did_keri() {
+        use crate::crypto::{Seed, ssh::Keystore};
+
+        let tmp = tempfile::tempdir().unwrap();
+        let home = Home::new(tmp.path().join("radicle")).unwrap();
+        let keystore = Keystore::new(&home.keys());
+        let seed = Seed::generate();
+        let (_pk, _) = keystore.init("radicle", None, seed).unwrap();
+
+        // Before migration: no keri-prefix
+        assert!(!home.keri_prefix().exists());
+
+        // Migrate
+        Profile::ensure_keri_identity(&home, &keystore, None);
+
+        // After migration: keri-prefix should exist and be non-empty
+        let prefix = fs::read_to_string(home.keri_prefix()).unwrap();
+        assert!(!prefix.is_empty());
+        assert!(prefix.starts_with('E'), "KERI prefix format: {prefix}");
+
+        // Verify the keri KEL repo has at least one commit
+        let keri_repo = git2::Repository::open(home.keys().join("keri")).unwrap();
+        let head = keri_repo.head().unwrap();
+        assert!(head.peel_to_commit().is_ok(), "KEL repo should have inception commit");
+    }
 }
