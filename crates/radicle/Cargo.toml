@@ -59,9 +59,9 @@ thiserror = { workspace = true, default-features = true }
 unicode-normalization = { version = "0.1" }
 
 # Multi-device identity bridge (git deps; overridden locally via [patch] in workspace root)
-auths-radicle = { git = "https://github.com/auths-dev/auths", branch = "main" }
-auths-id = { git = "https://github.com/auths-dev/auths", branch = "main" }
-auths-verifier = { git = "https://github.com/auths-dev/auths", branch = "main", default-features = false }
+auths-radicle = { git = "https://github.com/auths-dev/auths", branch = "dev-radTest" }
+auths-id = { git = "https://github.com/auths-dev/auths", branch = "dev-radTest" }
+auths-verifier = { git = "https://github.com/auths-dev/auths", branch = "dev-radTest", default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }
