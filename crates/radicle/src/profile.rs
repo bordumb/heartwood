@@ -409,16 +409,18 @@ impl Profile {
             }
         };
 
-        // Write prefix file.
-        if let Err(e) = std::fs::write(home.keri_prefix(), inception.prefix.as_str()) {
-            log::warn!(target: "radicle", "KERI migration: failed to write prefix: {e}");
-            return;
-        }
-
-        // Write next-rotation key.
+        // Write next-rotation key first, before the prefix file.
+        // The prefix file acts as the migration marker — writing it last
+        // ensures we never end up with a prefix but no next-rotation key.
         let next_key_path = home.keys().join("keri-next");
         if let Err(e) = std::fs::write(&next_key_path, inception.next_keypair_pkcs8.as_ref()) {
             log::warn!(target: "radicle", "KERI migration: failed to write next key: {e}");
+            return;
+        }
+
+        // Write prefix file last — this marks migration as complete.
+        if let Err(e) = std::fs::write(home.keri_prefix(), inception.prefix.as_str()) {
+            log::warn!(target: "radicle", "KERI migration: failed to write prefix: {e}");
             return;
         }
 
