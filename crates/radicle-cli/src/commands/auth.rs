@@ -115,6 +115,14 @@ pub fn init(args: Args) -> anyhow::Result<()> {
 pub fn authenticate(args: Args, profile: &Profile) -> anyhow::Result<()> {
     if !profile.keystore.is_encrypted()? {
         term::success!("Authenticated as {}", term::format::tertiary(profile.id()));
+        if profile.keri_prefix().is_none() && profile.hints() {
+            term::info!(
+                "{}",
+                term::format::secondary(
+                    "You are on legacy single-key identity. Multi-device support is available via `rad migrate`."
+                )
+            );
+        }
         return Ok(());
     }
     for (key, _) in &profile.config.node.extra {
@@ -144,14 +152,17 @@ pub fn authenticate(args: Args, profile: &Profile) -> anyhow::Result<()> {
                     "A passphrase is required to read your Radicle key. Unable to continue."
                 )
             };
-            Profile::ensure_keri_identity(
-                &profile.home,
-                &profile.keystore,
-                Some(passphrase.clone()),
-            );
             register(&mut agent, profile, passphrase)?;
 
             term::success!("Radicle key added to {}", term::format::dim("ssh-agent"));
+            if profile.keri_prefix().is_none() && profile.hints() {
+                term::info!(
+                    "{}",
+                    term::format::secondary(
+                        "You are on legacy single-key identity. Multi-device support is available via `rad migrate`."
+                    )
+                );
+            }
 
             return Ok(());
         }
@@ -163,11 +174,14 @@ pub fn authenticate(args: Args, profile: &Profile) -> anyhow::Result<()> {
     if let Some(passphrase) = profile::env::passphrase() {
         ssh::keystore::MemorySigner::load(&profile.keystore, Some(passphrase.clone()))
             .map_err(|_| anyhow!("`{}` is invalid", env::RAD_PASSPHRASE))?;
-        Profile::ensure_keri_identity(
-            &profile.home,
-            &profile.keystore,
-            Some(passphrase),
-        );
+        if profile.keri_prefix().is_none() && profile.hints() {
+            term::info!(
+                "{}",
+                term::format::secondary(
+                    "You are on legacy single-key identity. Multi-device support is available via `rad migrate`."
+                )
+            );
+        }
         return Ok(());
     }
 

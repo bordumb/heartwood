@@ -15,6 +15,7 @@ pub mod init;
 pub mod inspect;
 pub mod issue;
 pub mod ls;
+pub mod migrate;
 pub mod node;
 pub mod patch;
 pub mod path;
