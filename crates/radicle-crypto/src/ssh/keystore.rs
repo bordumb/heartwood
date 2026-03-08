@@ -94,39 +94,8 @@ impl Keystore {
         seed: ec25519::Seed,
     ) -> Result<(PublicKey, Vec<u8>), Error> {
         let keypair = KeyPair::from_seed(seed);
-
-        // Build Ed25519 PKCS8 v2 DER from the seed and public key.
-        // This is the format that `ring::signature::Ed25519KeyPair::from_pkcs8` requires
-        // (v2 includes the public key for consistency checking).
-        //
-        // ASN.1 structure (RFC 8410, OneAsymmetricKey v2):
-        //   SEQUENCE {
-        //     INTEGER 1                              -- version (v2)
-        //     SEQUENCE { OID 1.3.101.112 }           -- algorithm
-        //     OCTET STRING { OCTET STRING { seed } } -- private key
-        //     [1] { public key }                     -- public key
-        //   }
-        let seed_bytes: &[u8] = &keypair.sk[..32]; // first 32 bytes of SecretKey are the seed
-        let pk_bytes: &[u8] = &*keypair.pk;
-
-        let mut pkcs8 = Vec::with_capacity(83);
-        // SEQUENCE (81 bytes total payload)
-        pkcs8.extend_from_slice(&[0x30, 0x51]);
-        //   INTEGER 1 (version = v2)
-        pkcs8.extend_from_slice(&[0x02, 0x01, 0x01]);
-        //   SEQUENCE (5 bytes) containing OID
-        pkcs8.extend_from_slice(&[0x30, 0x05]);
-        //     OID 1.3.101.112 (id-EdDSA / Ed25519)
-        pkcs8.extend_from_slice(&[0x06, 0x03, 0x2b, 0x65, 0x70]);
-        //   OCTET STRING (34 bytes) wrapping inner OCTET STRING
-        pkcs8.extend_from_slice(&[0x04, 0x22]);
-        //     OCTET STRING (32 bytes) containing the seed
-        pkcs8.extend_from_slice(&[0x04, 0x20]);
-        pkcs8.extend_from_slice(seed_bytes);
-        //   [1] IMPLICIT (33 bytes) containing the public key
-        pkcs8.extend_from_slice(&[0x81, 0x21, 0x00]);
-        pkcs8.extend_from_slice(pk_bytes);
-
+        let sk = SecretKey::from(keypair.sk.clone());
+        let pkcs8 = Self::pkcs8_from_secret_key(&sk);
         let public_key = self.store(keypair, comment, passphrase)?;
         Ok((public_key, pkcs8))
     }
