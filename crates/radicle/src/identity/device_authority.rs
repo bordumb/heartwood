@@ -112,7 +112,7 @@ impl DeviceAuthorityChecker for CompositeAuthorityChecker {
                     identity_did,
                 })
             }
-            VerifyResult::Rejected { reason } => Err(AuthorityError::Rejected(reason)),
+            VerifyResult::Rejected { reason } => Err(AuthorityError::Rejected(reason.to_string())),
             VerifyResult::Warn { .. } => {
                 // In observe mode the bridge downgrades rejections to warnings.
                 // Still allow, but find identity for the result.

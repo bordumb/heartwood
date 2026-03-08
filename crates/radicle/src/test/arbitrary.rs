@@ -14,9 +14,9 @@ use crate::collections::RandomMap;
 use crate::identity::doc::Visibility;
 use crate::identity::project::ProjectName;
 use crate::identity::{
+    did::Did,
     doc::{Doc, DocAt, RawDoc, RepoId},
     project::Project,
-    Did,
 };
 use crate::node::address::{AddressType, Source};
 use crate::node::{Address, Alias, KnownAddress, Timestamp, UserAgent};
@@ -115,12 +115,6 @@ impl Arbitrary for storage::Remotes<crypto::Unverified> {
             Arbitrary::arbitrary(g);
 
         storage::Remotes::new(remotes)
-    }
-}
-
-impl Arbitrary for Did {
-    fn arbitrary(g: &mut qcheck::Gen) -> Self {
-        Self::from(PublicKey::arbitrary(g))
     }
 }
 

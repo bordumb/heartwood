@@ -98,7 +98,7 @@ fn sync_status(
     const SYMBOL_STATE_UNKNOWN: &str = "•";
 
     let mut table = Table::<5, term::Label>::new(TableOptions::bordered());
-    let mut seeds: Vec<_> = node.seeds_for(rid, [*profile.did()])?.into();
+    let mut seeds: Vec<_> = node.seeds_for(rid, [*profile.did().public_key()])?.into();
     let local_nid = node.nid()?;
     let aliases = profile.aliases();
 
@@ -276,7 +276,7 @@ pub fn fetch(
         None => {
             // We push nodes that are in our seed list in attempt to fulfill the
             // replicas, if needed.
-            let seeds = node.seeds_for(rid, [*profile.did()])?;
+            let seeds = node.seeds_for(rid, [*profile.did().public_key()])?;
             let (connected, disconnected) = seeds.partition();
             let candidates = connected
                 .into_iter()

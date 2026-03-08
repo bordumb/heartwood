@@ -256,7 +256,7 @@ where
 
     let assignee = match assigned {
         Some(Assigned::Me) => Some(*profile.id()),
-        Some(Assigned::Peer(id)) => Some((*id).into()),
+        Some(Assigned::Peer(id)) => Some(*id.public_key()),
         None => None,
     };
 
@@ -312,7 +312,7 @@ where
         let assigned: String = issue
             .assignees()
             .map(|did| {
-                let (alias, _) = Author::new(did.as_key(), profile, verbose).labels();
+                let (alias, _) = Author::new(did.public_key(), profile, verbose).labels();
 
                 alias.content().to_owned()
             })
@@ -323,7 +323,7 @@ where
         labels.sort();
 
         let author = issue.author().id;
-        let (alias, did) = Author::new(&author, profile, verbose).labels();
+        let (alias, did) = Author::new(author.public_key(), profile, verbose).labels();
 
         mk_issue_row(id, issue, assigned, labels, alias, did)
     }));

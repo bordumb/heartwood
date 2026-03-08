@@ -101,7 +101,7 @@ pub fn run(args: Args, ctx: impl term::Context) -> anyhow::Result<()> {
             let (_, doc) = repo(rid, storage)?;
             let aliases = profile.aliases();
             for did in doc.delegates().iter() {
-                if let Some(alias) = aliases.alias(did) {
+                if let Some(alias) = aliases.alias(did.public_key()) {
                     println!(
                         "{} {}",
                         term::format::tertiary(&did),

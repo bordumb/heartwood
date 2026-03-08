@@ -97,7 +97,7 @@ impl<'a> RevisionEntry<'a> {
 
         RevisionEntry {
             is_initial: patch.root().0 == id,
-            author: Author::new(&revision.author().id, profile, verbose),
+            author: Author::new(revision.author().id.public_key(), profile, verbose),
             timestamp: revision.timestamp(),
             id,
             head: revision.head(),
@@ -179,7 +179,7 @@ impl Update<'_> {
 
                 Line::spaced([symbol.into(), verb.into(), dim(by).into()])
                     .space()
-                    .extend(Author::new(&review.author().id.into(), profile, verbose).line())
+                    .extend(Author::new(review.author().id.public_key(), profile, verbose).line())
                     .space()
                     .item(dim(timestamp(review.timestamp())))
             }

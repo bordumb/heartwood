@@ -1,12 +1,12 @@
-use core::fmt;
-use core::str::FromStr;
 use alloc::borrow::ToOwned;
 use alloc::format;
 use alloc::string::{String, ToString};
-use serde::{Deserialize, Serialize};
-use thiserror::Error;
+use core::fmt;
+use core::str::FromStr;
 use radicle_crypto;
 use radicle_crypto::PublicKey;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum DidError {
@@ -35,12 +35,17 @@ impl Did {
 
     pub fn decode(input: &str) -> Result<Self, DidError> {
         if let Some(key) = input.strip_prefix("did:key:") {
-            PublicKey::from_str(key).map(Self::Key).map_err(DidError::from)
+            PublicKey::from_str(key)
+                .map(Self::Key)
+                .map_err(DidError::from)
         } else if let Some(prefix) = input.strip_prefix("did:keri:") {
             if prefix.is_empty() {
                 return Err(DidError::Keri("prefix cannot be empty".into()));
             }
-            if prefix.chars().all(|c| c.is_alphanumeric() || c == '-' || c == '_') {
+            if prefix
+                .chars()
+                .all(|c| c.is_alphanumeric() || c == '-' || c == '_')
+            {
                 Ok(Self::Keri(prefix.to_owned()))
             } else {
                 Err(DidError::Keri(format!("invalid characters in prefix")))
@@ -55,6 +60,17 @@ impl Did {
             Self::Key(key) => Some(key),
             _ => None,
         }
+    }
+
+    /// Migration shim: extracts the inner PublicKey for Key-based DIDs.
+    ///
+    /// Panics if called on a Keri DID. During the migration period from
+    /// single-key DIDs to KERI identities, call sites should be updated
+    /// to handle both variants via `as_key()`.
+    pub fn public_key(&self) -> &PublicKey {
+        self.as_key().expect(
+            "Did::public_key() called on a Keri DID — migrate this call site to handle Did::Keri",
+        )
     }
 
     pub fn as_keri_prefix(&self) -> Option<&str> {
@@ -98,6 +114,14 @@ impl From<&PublicKey> for Did {
     }
 }
 
+/// Migration shim: converts a Key-based DID back to its PublicKey.
+/// Panics on Keri DIDs.
+impl From<Did> for PublicKey {
+    fn from(did: Did) -> Self {
+        *did.public_key()
+    }
+}
+
 impl From<Did> for String {
     fn from(other: Did) -> Self {
         other.encode()
@@ -127,5 +151,12 @@ impl fmt::Display for Did {
 impl fmt::Debug for Did {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "Did({:?})", self.to_string())
+    }
+}
+
+#[cfg(feature = "qcheck")]
+impl qcheck::Arbitrary for Did {
+    fn arbitrary(g: &mut qcheck::Gen) -> Self {
+        Self::Key(radicle_crypto::PublicKey::arbitrary(g))
     }
 }

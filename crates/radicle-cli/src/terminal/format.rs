@@ -83,7 +83,7 @@ pub fn cob(id: &ObjectId) -> Paint<String> {
 /// Format a DID.
 #[must_use]
 pub fn did(did: &Did) -> Paint<String> {
-    let nid = did.as_key().to_human();
+    let nid = did.public_key().to_human();
     Paint::new(format!("{}…{}", &nid[..7], &nid[nid.len() - 7..]))
 }
 

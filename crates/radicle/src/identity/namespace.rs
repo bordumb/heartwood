@@ -95,9 +95,7 @@ impl IdentityNamespace {
         }
         if let Some(rest) = component.strip_prefix("did-key-") {
             let pk = crate::crypto::PublicKey::from_str(rest).ok()?;
-            return Some(Self {
-                did: Did::Key(pk),
-            });
+            return Some(Self { did: Did::Key(pk) });
         }
         None
     }
@@ -135,12 +133,10 @@ impl IdentityPointer {
     }
 
     /// Read and parse the blob at `oid` from `repo`.
-    pub fn read_blob(
-        repo: &raw::Repository,
-        oid: raw::Oid,
-    ) -> Result<Self, IdentityPointerError> {
+    pub fn read_blob(repo: &raw::Repository, oid: raw::Oid) -> Result<Self, IdentityPointerError> {
         let blob = repo.find_blob(oid).map_err(IdentityPointerError::Git)?;
-        let content = std::str::from_utf8(blob.content()).map_err(|_| IdentityPointerError::Utf8)?;
+        let content =
+            std::str::from_utf8(blob.content()).map_err(|_| IdentityPointerError::Utf8)?;
         let rid = RepoId::from_str(content)
             .map_err(|_| IdentityPointerError::RepoId(content.to_owned()))?;
         Ok(Self { rid })
@@ -168,8 +164,8 @@ pub fn write_identity_namespace(
     let tree = repo
         .find_tree(tree_oid)
         .map_err(IdentityPointerError::Git)?;
-    let sig = raw::Signature::now("radicle", "radicle@localhost")
-        .map_err(IdentityPointerError::Git)?;
+    let sig =
+        raw::Signature::now("radicle", "radicle@localhost").map_err(IdentityPointerError::Git)?;
 
     let ref_name = identity_ns.rad_id_ref();
     let parent = repo
@@ -297,7 +293,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let repo = crate::git::raw::Repository::init_bare(dir.path()).unwrap();
 
-        let ns = IdentityNamespace::new(Did::Keri("EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into()));
+        let ns = IdentityNamespace::new(Did::Keri(
+            "EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into(),
+        ));
         let rid: RepoId = "rad:z3gqcJUoA1n9HaHKufZs5FCSGazv5".parse().unwrap();
 
         write_identity_namespace(&repo, &ns, &rid).unwrap();
@@ -310,7 +308,9 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let repo = crate::git::raw::Repository::init_bare(dir.path()).unwrap();
 
-        let ns = IdentityNamespace::new(Did::Keri("EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into()));
+        let ns = IdentityNamespace::new(Did::Keri(
+            "EXq5YqaL6L48pf0fu7IUhL0JRaU2_RxFP0AL43wYn148".into(),
+        ));
         let result = read_identity_pointer(&repo, &ns).unwrap();
         assert_eq!(result, None);
     }

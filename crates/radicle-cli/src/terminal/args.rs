@@ -69,11 +69,14 @@ pub(crate) struct NodeIdParseError {
 }
 
 pub(crate) fn parse_nid(value: &str) -> Result<NodeId, NodeIdParseError> {
-    value.parse::<Did>().map(NodeId::from).or_else(|did| {
-        value
-            .parse::<NodeId>()
-            .map_err(|nid| NodeIdParseError { nid, did })
-    })
+    value
+        .parse::<Did>()
+        .map(|d| *d.public_key())
+        .or_else(|did| {
+            value
+                .parse::<NodeId>()
+                .map_err(|nid| NodeIdParseError { nid, did })
+        })
 }
 
 #[derive(Clone, Debug)]

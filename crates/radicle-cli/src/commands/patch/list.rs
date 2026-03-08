@@ -74,7 +74,8 @@ pub fn run(
 
     let me = *profile.id();
     all.sort_by(|(id1, p1), (id2, p2)| {
-        let is_me = (p2.author().id().as_key() == &me).cmp(&(p1.author().id().as_key() == &me));
+        let is_me =
+            (p2.author().id().public_key() == &me).cmp(&(p1.author().id().public_key() == &me));
         let by_id = id1.cmp(id2);
         let by_rev_time = p2.updated_at().cmp(&p1.updated_at());
 
@@ -111,12 +112,12 @@ pub fn row(
     let (_, revision) = patch.latest();
     let (from, to) = revision.range();
     let stats = common::diff_stats(repository.raw(), &from, &to)?;
-    let author = patch.author().id;
-    let (alias, did) = Author::new(&author, profile, false).labels();
+    let author = &patch.author().id;
+    let (alias, did) = Author::new(author.public_key(), profile, false).labels();
     let mut delegates = repository
         .delegates()?
         .into_iter()
-        .map(|delegate| (*delegate, term::format::patch::verdict(None)))
+        .map(|delegate| (*delegate.public_key(), term::format::patch::verdict(None)))
         .collect::<BTreeMap<_, _>>();
     for (key, review) in revision.reviews() {
         delegates
