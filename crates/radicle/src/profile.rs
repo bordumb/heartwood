@@ -352,6 +352,79 @@ impl Profile {
         std::fs::read_to_string(&path).ok().map(|s| s.trim().to_string())
     }
 
+    /// Ensure a KERI identity exists for this profile.
+    ///
+    /// If `keri-prefix` already exists, this is a no-op.
+    /// Otherwise, loads the secret key (using passphrase if needed),
+    /// reconstructs PKCS8 bytes, runs KERI inception, and writes
+    /// `keri-prefix` and `keri-next` files.
+    ///
+    /// This is best-effort: if the key is encrypted and no passphrase
+    /// is available, or if any other error occurs, it logs a warning
+    /// and returns silently. The profile continues working as did:key.
+    pub fn ensure_keri_identity(
+        home: &Home,
+        keystore: &Keystore,
+        passphrase: Option<Passphrase>,
+    ) {
+        // Already migrated — nothing to do.
+        if home.keri_prefix().exists() {
+            return;
+        }
+
+        // Try to load the secret key.
+        let sk = match keystore.secret_key(passphrase) {
+            Ok(Some(sk)) => sk,
+            Ok(None) => return,
+            Err(e) => {
+                log::debug!(target: "radicle", "KERI migration skipped: {e}");
+                return;
+            }
+        };
+
+        // Reconstruct PKCS8 v2 DER from existing key.
+        let pkcs8_bytes = Keystore::pkcs8_from_secret_key(&sk);
+
+        // Initialize the KERI KEL git repo.
+        let keri_repo_path = home.keys().join("keri");
+        let keri_repo = match git2::Repository::init(&keri_repo_path) {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!(target: "radicle", "KERI migration: failed to init KEL repo: {e}");
+                return;
+            }
+        };
+
+        // Run inception.
+        let inception = match auths_id::keri::inception::create_keri_identity_from_key(
+            &keri_repo,
+            &pkcs8_bytes,
+            None,
+            chrono::Utc::now(),
+        ) {
+            Ok(r) => r,
+            Err(e) => {
+                log::warn!(target: "radicle", "KERI migration: inception failed: {e}");
+                return;
+            }
+        };
+
+        // Write prefix file.
+        if let Err(e) = std::fs::write(home.keri_prefix(), inception.prefix.as_str()) {
+            log::warn!(target: "radicle", "KERI migration: failed to write prefix: {e}");
+            return;
+        }
+
+        // Write next-rotation key.
+        let next_key_path = home.keys().join("keri-next");
+        if let Err(e) = std::fs::write(&next_key_path, inception.next_keypair_pkcs8.as_ref()) {
+            log::warn!(target: "radicle", "KERI migration: failed to write next key: {e}");
+            return;
+        }
+
+        log::info!(target: "radicle", "Identity upgraded to did:keri:{}", inception.prefix.as_str());
+    }
+
     pub fn signer(&self) -> Result<BoxedDevice, SignerError> {
         if !self.keystore.is_encrypted()? {
             let signer = keystore::MemorySigner::load(&self.keystore, None)?;
@@ -887,5 +960,58 @@ mod test {
         assert!(cfg.node.extra.contains_key("db"));
         assert!(cfg.node.extra.contains_key("policy"));
         assert!(cfg.node.extra.contains_key("scope"));
+    }
+
+    #[test]
+    fn test_ensure_keri_identity_migrates_existing_profile() {
+        use crate::crypto::{ssh::Keystore, Seed};
+
+        let tmp = tempfile::tempdir().unwrap();
+        let home = Home::new(tmp.path().join("radicle")).unwrap();
+        let keystore = Keystore::new(&home.keys());
+        let seed = Seed::generate();
+        let (_pk, _pkcs8) = keystore.init("radicle", None, seed).unwrap();
+
+        // No keri-prefix should exist yet
+        assert!(!home.keri_prefix().exists());
+
+        // Run migration
+        Profile::ensure_keri_identity(&home, &keystore, None);
+
+        // keri-prefix should now exist
+        assert!(home.keri_prefix().exists());
+        let prefix = fs::read_to_string(home.keri_prefix()).unwrap();
+        assert!(
+            prefix.starts_with('E'),
+            "KERI prefix should start with 'E', got: {}",
+            prefix
+        );
+
+        // keri-next should exist
+        assert!(home.keys().join("keri-next").exists());
+
+        // keri git repo should exist
+        assert!(home.keys().join("keri").exists());
+    }
+
+    #[test]
+    fn test_ensure_keri_identity_is_idempotent() {
+        use crate::crypto::{ssh::Keystore, Seed};
+
+        let tmp = tempfile::tempdir().unwrap();
+        let home = Home::new(tmp.path().join("radicle")).unwrap();
+        let keystore = Keystore::new(&home.keys());
+        let seed = Seed::generate();
+        let (_pk, _pkcs8) = keystore.init("radicle", None, seed).unwrap();
+
+        // First migration
+        Profile::ensure_keri_identity(&home, &keystore, None);
+        let prefix1 = fs::read_to_string(home.keri_prefix()).unwrap();
+
+        // Second call should be a no-op
+        Profile::ensure_keri_identity(&home, &keystore, None);
+        let prefix2 = fs::read_to_string(home.keri_prefix()).unwrap();
+
+        assert_eq!(prefix1, prefix2, "Migration must be idempotent");
     }
 }
