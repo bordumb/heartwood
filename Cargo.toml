@@ -88,6 +88,19 @@ clippy.unneeded_field_pattern = "deny"
 clippy.fn_params_excessive_bools = "deny"
 clippy.must_use_candidate = "deny"
 
+# Override git deps with local paths for development.
+# These are ignored in Docker/CI where the git deps are resolved directly.
+[patch."https://github.com/auths-dev/auths"]
+auths-radicle = { path = "/Users/bordumb/workspace/repositories/auths-base/auths/crates/auths-radicle" }
+auths-id = { path = "/Users/bordumb/workspace/repositories/auths-base/auths/crates/auths-id" }
+auths-verifier = { path = "/Users/bordumb/workspace/repositories/auths-base/auths/crates/auths-verifier" }
+
+# Ensure auths-radicle uses the SAME radicle-core/radicle-crypto as this workspace
+# (avoids duplicate type errors from two different copies of the same crate).
+[patch."https://github.com/bordumb/heartwood"]
+radicle-core = { path = "crates/radicle-core" }
+radicle-crypto = { path = "crates/radicle-crypto" }
+
 [profile.container]
 inherits = "release"
 debug = true

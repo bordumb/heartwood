@@ -374,7 +374,9 @@ impl ProtocolStage for SigrefsAt {
                 suffix: Either::Left(Special::SignedRefs),
                 ..
             } => Some(ReceivedRef::new(tip, refname)),
-            ReceivedRefname::Namespaced { .. } | ReceivedRefname::RadId => None,
+            ReceivedRefname::Namespaced { .. }
+            | ReceivedRefname::RadId
+            | ReceivedRefname::DidNamespace { .. } => None,
         }
     }
 

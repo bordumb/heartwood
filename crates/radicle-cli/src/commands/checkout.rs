@@ -40,7 +40,13 @@ fn execute(args: Args, profile: &Profile) -> anyhow::Result<PathBuf> {
     }
 
     let mut spinner = term::spinner("Performing checkout...");
-    let repo = match radicle::rad::checkout(args.repo, &remote, path.clone(), &storage, false) {
+    let repo = match radicle::rad::checkout(
+        args.repo,
+        remote.public_key(),
+        path.clone(),
+        &storage,
+        false,
+    ) {
         Ok(repo) => repo,
         Err(err) => {
             spinner.failed();
@@ -59,7 +65,7 @@ fn execute(args: Args, profile: &Profile) -> anyhow::Result<PathBuf> {
         .delegates()
         .clone()
         .into_iter()
-        .map(|did| *did)
+        .map(|did| *did.public_key())
         .filter(|id| id != profile.id())
         .collect::<Vec<_>>();
 

@@ -105,7 +105,7 @@ impl<'a> ReceivedRefname<'a> {
                 }
             },
             Self::RadId => REFS_RAD_ID.clone(),
-            Self::DidNamespace { ref_name } => ref_name.clone(),
+            Self::DidNamespace { ref_name } => ref_name.to_owned(),
         }
     }
 
@@ -132,11 +132,9 @@ impl TryFrom<BString> for ReceivedRefname<'_> {
         // Check for DID namespace refs before attempting PublicKey parsing,
         // since "did-keri-..." is not a valid PublicKey.
         if s.starts_with("refs/namespaces/did-") {
-            let refstr = git::fmt::RefStr::try_from_str(s)?;
+            let refstr = git::fmt::RefStr::try_from_str(s).map_err(git::RefError::from)?;
             let qualified = git::fmt::Qualified::from_refstr(refstr)
-                .ok_or_else(|| {
-                    Error::Ref(git::RefError::Unqualified(refstr.to_owned()))
-                })?;
+                .ok_or_else(|| Error::Ref(git::RefError::Unqualified(refstr.to_owned())))?;
             return Ok(ReceivedRefname::DidNamespace {
                 ref_name: qualified.to_owned(),
             });

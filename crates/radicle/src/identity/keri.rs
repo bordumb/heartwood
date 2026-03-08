@@ -77,7 +77,8 @@ impl GitKeriIdentityStore {
 impl KeriIdentityStore for GitKeriIdentityStore {
     fn list_devices(&self) -> Result<Vec<PublicKey>, KeriStoreError> {
         let repo = self.lock_repo();
-        let glob = format!("{}/*/{}",
+        let glob = format!(
+            "{}/*/{}",
             auths_radicle::refs::KEYS_PREFIX,
             auths_radicle::refs::SIGNATURES_DIR,
         );
@@ -138,7 +139,12 @@ impl KeriIdentityStore for GitKeriIdentityStore {
         let dkeri_ref = auths_radicle::refs::device_did_keri_ref(&nid_str);
 
         write_blob_commit(&repo, &dk_ref, auths_radicle::refs::DID_KEY_BLOB, &dk_bytes)?;
-        write_blob_commit(&repo, &dkeri_ref, auths_radicle::refs::DID_KERI_BLOB, &dkeri_bytes)?;
+        write_blob_commit(
+            &repo,
+            &dkeri_ref,
+            auths_radicle::refs::DID_KERI_BLOB,
+            &dkeri_bytes,
+        )?;
 
         Ok(())
     }
@@ -188,7 +194,9 @@ fn write_blob_commit(
         .map_err(|e| KeriStoreError::Bridge(e.to_string()))?;
     tb.insert(blob_name, blob_oid, 0o100644)
         .map_err(|e| KeriStoreError::Bridge(e.to_string()))?;
-    let tree_oid = tb.write().map_err(|e| KeriStoreError::Bridge(e.to_string()))?;
+    let tree_oid = tb
+        .write()
+        .map_err(|e| KeriStoreError::Bridge(e.to_string()))?;
     drop(tb);
 
     let tree = repo
@@ -197,9 +205,10 @@ fn write_blob_commit(
     let sig = raw::Signature::now("radicle", "radicle@localhost")
         .map_err(|e| KeriStoreError::Bridge(e.to_string()))?;
 
-    let parent = repo.find_reference(ref_path).ok().and_then(|r| {
-        r.peel_to_commit().ok()
-    });
+    let parent = repo
+        .find_reference(ref_path)
+        .ok()
+        .and_then(|r| r.peel_to_commit().ok());
     let parents: Vec<&raw::Commit<'_>> = parent.iter().collect();
 
     let commit_oid = repo

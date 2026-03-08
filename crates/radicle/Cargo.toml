@@ -58,10 +58,10 @@ tempfile = { workspace = true, optional = true }
 thiserror = { workspace = true, default-features = true }
 unicode-normalization = { version = "0.1" }
 
-# Multi-device identity bridge (path deps for local dev; needs published crates for production)
-auths-radicle = { path = "/Users/bordumb/workspace/repositories/auths-base/auths/crates/auths-radicle" }
-auths-id = { path = "/Users/bordumb/workspace/repositories/auths-base/auths/crates/auths-id" }
-auths-verifier = { path = "/Users/bordumb/workspace/repositories/auths-base/auths/crates/auths-verifier" }
+# Multi-device identity bridge (git deps; overridden locally via [patch] in workspace root)
+auths-radicle = { git = "https://github.com/auths-dev/auths", branch = "main" }
+auths-id = { git = "https://github.com/auths-dev/auths", branch = "main" }
+auths-verifier = { git = "https://github.com/auths-dev/auths", branch = "main", default-features = false }
 
 [target.'cfg(unix)'.dependencies]
 libc = { workspace = true }

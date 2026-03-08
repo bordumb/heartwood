@@ -56,7 +56,7 @@ pub fn run(args: Args, ctx: impl term::Context) -> anyhow::Result<()> {
     let delegates = doc
         .delegates()
         .iter()
-        .map(|d| **d)
+        .map(|d| *d.public_key())
         .filter(|id| id != profile.id())
         .collect::<Vec<_>>();
     let default_branch = proj.default_branch().clone();

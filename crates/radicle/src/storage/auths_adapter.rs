@@ -2,10 +2,11 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use auths_id::keri::KeyState;
-use auths_radicle::storage::GitRadicleStorage;
 use auths_radicle::refs::Layout;
+use auths_radicle::storage::GitRadicleStorage;
 use auths_radicle::{AuthsStorage, BridgeError};
 use auths_verifier::core::Attestation;
+use auths_verifier::IdentityDID;
 
 use crate::git::raw;
 use crate::identity::did::Did;
@@ -35,7 +36,10 @@ impl HeartwooodAuthsStorage {
     fn parse_keri_prefix(identity_did: &Did) -> Result<&str, BridgeError> {
         identity_did
             .as_keri_prefix()
-            .ok_or_else(|| BridgeError::IdentityLoad(format!("not a KERI DID: {identity_did}")))
+            .ok_or_else(|| BridgeError::IdentityLoad {
+                did: IdentityDID::new(identity_did.encode()),
+                reason: format!("not a KERI DID: {identity_did}"),
+            })
     }
 
     /// Find the identity repo path for a KERI DID by scanning project repos
@@ -58,16 +62,14 @@ impl HeartwooodAuthsStorage {
             }
         }
 
-        Err(BridgeError::IdentityLoad(format!(
-            "no identity repo found for did:keri:{keri_prefix}"
-        )))
+        Err(BridgeError::IdentityLoad {
+            did: IdentityDID::new(format!("did:keri:{keri_prefix}")),
+            reason: format!("no identity repo found for did:keri:{keri_prefix}"),
+        })
     }
 
     /// Open the identity repo for a KERI DID as a `GitRadicleStorage`.
-    fn open_identity_storage(
-        &self,
-        identity_did: &Did,
-    ) -> Result<GitRadicleStorage, BridgeError> {
+    fn open_identity_storage(&self, identity_did: &Did) -> Result<GitRadicleStorage, BridgeError> {
         let prefix = Self::parse_keri_prefix(identity_did)?;
         let repo_path = self.find_identity_repo_path(prefix)?;
         GitRadicleStorage::open(&repo_path, self.layout.clone())
@@ -75,13 +77,16 @@ impl HeartwooodAuthsStorage {
 
     /// List all repo directories under the storage path.
     fn list_repo_dirs(&self) -> Result<Vec<PathBuf>, BridgeError> {
-        let entries = std::fs::read_dir(&self.storage_path)
-            .map_err(|e| BridgeError::Repository(format!("can't list storage: {e}")))?;
+        let entries =
+            std::fs::read_dir(&self.storage_path).map_err(|e| BridgeError::Repository {
+                reason: format!("can't list storage: {e}"),
+            })?;
 
         let mut dirs = Vec::new();
         for entry in entries {
-            let entry =
-                entry.map_err(|e| BridgeError::Repository(format!("read_dir error: {e}")))?;
+            let entry = entry.map_err(|e| BridgeError::Repository {
+                reason: format!("read_dir error: {e}"),
+            })?;
             let path = entry.path();
             if path.is_dir() {
                 dirs.push(path);
@@ -106,10 +111,9 @@ impl HeartwooodAuthsStorage {
             Ok(r) => r,
             Err(e) if e.code() == raw::ErrorCode::NotFound => return Ok(None),
             Err(e) => {
-                return Err(BridgeError::Repository(format!(
-                    "ref lookup error in {}: {e}",
-                    repo_path.display()
-                )))
+                return Err(BridgeError::Repository {
+                    reason: format!("ref lookup error in {}: {e}", repo_path.display()),
+                })
             }
         };
 
@@ -148,17 +152,20 @@ impl HeartwooodAuthsStorage {
         &self,
         project_path: &Path,
     ) -> Result<Vec<(Did, PathBuf)>, BridgeError> {
-        let repo = raw::Repository::open_bare(project_path).map_err(|e| {
-            BridgeError::Repository(format!(
-                "failed to open project repo at {}: {e}",
-                project_path.display()
-            ))
-        })?;
+        let repo =
+            raw::Repository::open_bare(project_path).map_err(|e| BridgeError::Repository {
+                reason: format!(
+                    "failed to open project repo at {}: {e}",
+                    project_path.display()
+                ),
+            })?;
 
         let glob = "refs/namespaces/did-keri-*/refs/rad/id";
         let refs = repo
             .references_glob(glob)
-            .map_err(|e| BridgeError::Repository(format!("ref glob error: {e}")))?;
+            .map_err(|e| BridgeError::Repository {
+                reason: format!("ref glob error: {e}"),
+            })?;
 
         let mut result = Vec::new();
         for r in refs {
@@ -230,18 +237,22 @@ impl AuthsStorage for HeartwooodAuthsStorage {
         let project_path = self.storage_path.join(repo_id.canonical());
 
         for (keri_did, identity_path) in self.enumerate_identity_namespaces(&project_path)? {
-            let identity_storage = match GitRadicleStorage::open(&identity_path, self.layout.clone()) {
-                Ok(s) => s,
-                Err(_) => continue,
-            };
-            if let Ok(Some(_)) =
-                identity_storage.find_identity_for_device(device_did, repo_id)
-            {
+            let identity_storage =
+                match GitRadicleStorage::open(&identity_path, self.layout.clone()) {
+                    Ok(s) => s,
+                    Err(_) => continue,
+                };
+            if let Ok(Some(_)) = identity_storage.find_identity_for_device(device_did, repo_id) {
                 return Ok(Some(keri_did));
             }
         }
 
         Ok(None)
+    }
+
+    fn list_devices(&self, identity_did: &Did) -> Result<Vec<Did>, BridgeError> {
+        self.open_identity_storage(identity_did)?
+            .list_devices(identity_did)
     }
 
     fn local_identity_tip(&self, identity_did: &Did) -> Result<Option<[u8; 20]>, BridgeError> {
