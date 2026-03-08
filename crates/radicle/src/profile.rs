@@ -301,6 +301,10 @@ impl Profile {
         let public_key = keystore
             .public_key()?
             .ok_or_else(|| Error::NotFound(home.path().to_path_buf()))?;
+
+        // Auto-migrate did:key → did:keri (best-effort, silent on failure).
+        Self::ensure_keri_identity(&home, &keystore, env::passphrase());
+
         let config = Config::load(home.config().as_path())?;
         let storage = Storage::open(
             home.storage(),
