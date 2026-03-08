@@ -54,6 +54,14 @@ fn all(profile: &Profile) -> anyhow::Result<()> {
         term::format::tertiary(did).into(),
     ]);
 
+    if profile.keri_prefix().is_some() {
+        let device_did = radicle::identity::Did::from(profile.public_key);
+        table.push([
+            term::format::style("Device").into(),
+            term::format::tertiary(device_did).into(),
+        ]);
+    }
+
     let socket = profile.socket();
     let node = if Node::new(&socket).is_running() {
         term::format::positive(format!("running ({})", socket.display()))

@@ -56,7 +56,7 @@ pub fn init(args: Args) -> anyhow::Result<()> {
         term::passphrase_confirm("Enter a passphrase:", env::RAD_PASSPHRASE)?
     };
     let passphrase = passphrase.filter(|passphrase| !passphrase.trim().is_empty());
-    let spinner = term::spinner("Creating your Ed25519 keypair...");
+    let spinner = term::spinner("Creating your identity and device keypair...");
     let profile = Profile::init(home, alias, passphrase.clone(), env::seed())?;
     let mut agent = true;
     spinner.finish();
@@ -80,11 +80,13 @@ pub fn init(args: Args) -> anyhow::Result<()> {
     }
 
     term::success!(
-        "Your Radicle DID is {}. This identifies your device. Run {} to show it at all times.",
+        "Your Radicle DID is {}.",
         term::format::highlight(profile.did()),
-        term::format::command("rad self")
     );
-    term::success!("You're all set.");
+    term::success!(
+        "Your device key is {}.",
+        term::format::highlight(radicle::identity::Did::from(profile.public_key)),
+    );
     term::blank();
 
     if profile.config.cli.hints && !agent {
