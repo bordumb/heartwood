@@ -204,7 +204,7 @@ where
 
     match node.announce(
         rid,
-        [*profile.did().public_key()],
+        [profile.public_key],
         settings.timeout,
         announcer,
         |node, progress| {

@@ -83,8 +83,21 @@ pub fn cob(id: &ObjectId) -> Paint<String> {
 /// Format a DID.
 #[must_use]
 pub fn did(did: &Did) -> Paint<String> {
-    let nid = did.public_key().to_human();
-    Paint::new(format!("{}…{}", &nid[..7], &nid[nid.len() - 7..]))
+    match did.as_key() {
+        Some(pk) => {
+            let nid = pk.to_human();
+            Paint::new(format!("{}…{}", &nid[..7], &nid[nid.len() - 7..]))
+        }
+        None => {
+            // KERI DID: show truncated prefix
+            let s = did.to_string();
+            if s.len() > 20 {
+                Paint::new(format!("{}…{}", &s[..16], &s[s.len() - 4..]))
+            } else {
+                Paint::new(s)
+            }
+        }
+    }
 }
 
 /// Format a Visibility.
