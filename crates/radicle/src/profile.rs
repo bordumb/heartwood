@@ -404,6 +404,12 @@ impl Profile {
             log::warn!(target: "radicle", "KERI migration: failed to write next key: {e}");
             return;
         }
+        // Restrict permissions on the next-rotation private key.
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let _ = std::fs::set_permissions(&next_key_path, std::fs::Permissions::from_mode(0o600));
+        }
 
         // Write prefix file last — this marks migration as complete.
         if let Err(e) = std::fs::write(home.keri_prefix(), inception.prefix.as_str()) {
