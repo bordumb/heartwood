@@ -236,27 +236,10 @@ impl Profile {
         seed: crypto::Seed,
     ) -> Result<Self, Error> {
         let keystore = Keystore::new(&home.keys());
-        let (public_key, pkcs8_bytes) = keystore.init("radicle", passphrase, seed)?;
+        let (public_key, _) = keystore.init("radicle", passphrase.clone(), seed)?;
 
         // Create KERI identity using the radicle key as the first device.
-        let keri_repo_path = home.keys().join("keri");
-        let keri_repo = git2::Repository::init(&keri_repo_path)
-            .map_err(|e| Error::Io(io::Error::new(io::ErrorKind::Other, e)))?;
-
-        let inception = auths_id::keri::inception::create_keri_identity_from_key(
-            &keri_repo,
-            &pkcs8_bytes,
-            None,
-            chrono::Utc::now(),
-        )
-        .map_err(|e| Error::Io(io::Error::new(io::ErrorKind::Other, e)))?;
-
-        // Persist the KERI prefix so `Profile::did()` returns `Did::Keri(prefix)`.
-        std::fs::write(home.keri_prefix(), inception.prefix.as_str())?;
-
-        // Store the next-rotation key for future key rotations.
-        let next_key_path = home.keys().join("keri-next");
-        std::fs::write(&next_key_path, inception.next_keypair_pkcs8.as_ref())?;
+        Self::ensure_keri_identity(&home, &keystore, passphrase);
 
         let config = Config::init(alias.clone(), home.config().as_path())?;
         let storage = Storage::open(
